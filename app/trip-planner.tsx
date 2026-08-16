@@ -346,7 +346,7 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
 
           {selected && (
             <article className="map-spotlight" aria-live="polite">
-              <div className="match-score"><strong>{selected.score}%</strong><span>family fit</span></div>
+              <div className="match-score"><strong>{selected.score}%</strong><span>trip match</span></div>
               <div className="spotlight-copy">
                 <p>{selected.region} · {formatDriveTime(selected.hours)} drive</p>
                 <h2>{selected.name}</h2>
@@ -367,7 +367,8 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
             <h2>Your best fits</h2>
           </div>
           <p>
-            Distance gets you into the list. Child fit, weather backup, and the right amount of time decide the order.
+            Every option already fits your hard constraints. Experience match, drive-time margin, group fit,
+            weather backup, and route simplicity decide the order.
           </p>
         </div>
 
@@ -385,7 +386,12 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
                   <p>{destination.region}</p>
                   <h3>{destination.name}</h3>
                 </div>
-                <div className="result-score"><strong>{destination.score}</strong><span>/100</span></div>
+                <div
+                  className="result-score"
+                  aria-label={`${destination.score} out of 100 trip match`}
+                >
+                  <strong>{destination.score}</strong><span>/100</span>
+                </div>
               </div>
               <p className="result-summary">{destination.summary}</p>
               <div className="tag-row">
@@ -395,9 +401,16 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
                 {destination.crossesBorder && <span>Border crossing</span>}
               </div>
               <div className="micro-plan">
+                <div className="match-explanation">
+                  <span>Why this ranks here</span>
+                  <p>{destination.matchReasons.join(" ")}</p>
+                </div>
                 <div><span>One strong anchor</span><p>{destination.anchor}</p></div>
                 <div><span>Where to stay</span><p>{destination.stay}</p></div>
-                <div className="caution"><span>Reality check</span><p>{destination.caution}</p></div>
+                <div className="caution">
+                  <span>Reality check</span>
+                  <p>{destination.tradeoffs[0] ? `${destination.tradeoffs[0]} ${destination.caution}` : destination.caution}</p>
+                </div>
               </div>
             </article>
           ))}

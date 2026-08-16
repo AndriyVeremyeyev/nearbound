@@ -34,9 +34,27 @@ export type TripCriteria = {
   visitedDestinationIds: readonly string[];
 };
 
+export type ScoreFactorId =
+  | "experience"
+  | "drive-time"
+  | "group-fit"
+  | "weather-backup"
+  | "logistics";
+
+export type ScoreFactor = {
+  id: ScoreFactorId;
+  label: string;
+  score: number;
+  maxScore: number;
+  summary: string;
+  sentiment: "strength" | "neutral" | "caution";
+};
+
 export type RankedDestination = Destination & {
   score: number;
-  preferenceMatches: number;
+  scoreBreakdown: ScoreFactor[];
+  matchReasons: string[];
+  tradeoffs: string[];
 };
 
 export type ExclusionReason =

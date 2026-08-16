@@ -1,4 +1,4 @@
-import { recommendDestinations } from "./recommend";
+import { recommendDestinations, SCORE_WEIGHTS } from "./recommend";
 import type { Destination, TripCriteria } from "./types";
 
 const defaultCriteria: TripCriteria = {
@@ -136,7 +136,7 @@ describe("recommendDestinations", () => {
     expect(result.exclusions[0].reasons).toEqual(["drive-time", "ferry"]);
   });
 
-  it("uses preference matches before drive time to order strong fits", () => {
+  it("uses experience fit before drive time to order strong matches", () => {
     const destinations = [
       createDestination({
         id: "nearby-city",
@@ -155,9 +155,102 @@ describe("recommendDestinations", () => {
       preferences: ["ocean"],
     });
 
-    expect(result.recommendations[0]).toMatchObject({
-      id: "ocean-match",
-      preferenceMatches: 1,
+    expect(result.recommendations[0].id).toBe("ocean-match");
+    expect(
+      result.recommendations[0].scoreBreakdown.find(
+        (factor) => factor.id === "experience",
+      ),
+    ).toMatchObject({
+      score: SCORE_WEIGHTS.experience,
+      maxScore: SCORE_WEIGHTS.experience,
+      sentiment: "strength",
     });
+    expect(result.recommendations[0].matchReasons).toContain(
+      "Matches all selected experiences: Ocean.",
+    );
+  });
+
+  it("builds the total from five explicit weighted factors", () => {
+    expect(SCORE_WEIGHTS).toEqual({
+      experience: 30,
+      driveTime: 25,
+      groupFit: 20,
+      weatherBackup: 15,
+      logistics: 10,
+    });
+
+    const [recommendation] = recommendDestinations(
+      [createDestination({ id: "balanced" })],
+      defaultCriteria,
+    ).recommendations;
+
+    expect(recommendation.scoreBreakdown).toHaveLength(5);
+    expect(recommendation.score).toBe(
+      recommendation.scoreBreakdown.reduce(
+        (total, factor) => total + factor.score,
+        0,
+      ),
+    );
+    expect(recommendation.score).toBeLessThanOrEqual(100);
+  });
+
+  it("keeps unspecified experience and family criteria neutral", () => {
+    const [recommendation] = recommendDestinations(
+      [createDestination({ id: "neutral" })],
+      defaultCriteria,
+    ).recommendations;
+
+    expect(recommendation.scoreBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "experience",
+          score: 18,
+          sentiment: "neutral",
+        }),
+        expect.objectContaining({
+          id: "group-fit",
+          score: 12,
+          sentiment: "neutral",
+        }),
+      ]),
+    );
+  });
+
+  it("keeps route friction visible even when the route is allowed", () => {
+    const result = recommendDestinations(
+      [
+        createDestination({ id: "simple" }),
+        createDestination({ id: "ferry", usesFerry: true }),
+        createDestination({ id: "border", crossesBorder: true }),
+      ],
+      defaultCriteria,
+    );
+
+    expect(
+      result.recommendations.map((destination) => ({
+        id: destination.id,
+        logistics: destination.scoreBreakdown.find(
+          (factor) => factor.id === "logistics",
+        )?.score,
+      })),
+    ).toEqual([
+      { id: "simple", logistics: 10 },
+      { id: "ferry", logistics: 7 },
+      { id: "border", logistics: 6 },
+    ]);
+    expect(result.recommendations[1].tradeoffs).toContain(
+      "Requires a ferry crossing even when ferries are allowed.",
+    );
+  });
+
+  it("explains when an allowed destination uses most of the drive limit", () => {
+    const [recommendation] = recommendDestinations(
+      [createDestination({ id: "edge", hours: 2.9 })],
+      defaultCriteria,
+    ).recommendations;
+
+    expect(recommendation.tradeoffs).toContain(
+      "Uses most of your drive-time limit.",
+    );
   });
 });

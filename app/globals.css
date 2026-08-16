@@ -206,6 +206,8 @@ main { min-height: 100vh; overflow: hidden; }
 .micro-plan > div { display: grid; grid-template-columns: 106px 1fr; gap: 12px; }
 .micro-plan span { color: var(--ink); font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
 .micro-plan p { margin: 0; color: var(--ink-soft); font-size: 11px; line-height: 1.45; }
+.micro-plan .match-explanation { margin: 0 -12px; padding: 12px; border-radius: 8px; background: rgba(215,232,225,.58); }
+.micro-plan .match-explanation span { color: var(--teal); }
 .micro-plan .caution { padding-top: 12px; border-top: 1px dashed var(--line); }
 .micro-plan .caution span { color: var(--orange-deep); }
 .empty-state { padding: 48px; text-align: center; border: 1px solid var(--line); background: var(--white); }

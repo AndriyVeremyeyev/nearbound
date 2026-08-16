@@ -40,6 +40,11 @@ describe("Nearbound concept prototype", () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/allow ferries/i)).toBeChecked();
     expect(screen.getByLabelText(/allow borders/i)).toBeChecked();
+    expect(screen.getByText("Why this ranks here")).toBeInTheDocument();
+    expect(
+      screen.getByText(/matches all selected experiences: animals and ocean/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("trip match")).toBeInTheDocument();
     expect(screen.getByText(/ranking updates as you go/i)).toBeInTheDocument();
   });
 
