@@ -51,16 +51,22 @@ Flights, booking, accounts, detailed itineraries, live pricing, and AI-generated
 
 ## Technology status
 
-The prototype now has an official Next.js App Router baseline with React and TypeScript. The current interface remains a client-side concept prototype while the domain model is separated and tested. Mapbox is the planned map, geocoding, and routing provider, and Vercel Hobby is the planned deployment target; neither integration is active yet. The MVP does not require a database, user accounts, or AI-generated recommendations.
+The prototype uses the official Next.js App Router with React and TypeScript. Its curated catalog is stored in Neon Postgres and loaded through a server-only Drizzle data layer; versioned migrations and an idempotent development seed keep the initial dataset reproducible. The interactive planner and deterministic ranking remain client-side. Mapbox is the planned map, geocoding, and routing provider, and Vercel Hobby is the planned deployment target; neither integration is active yet. User accounts and AI-generated recommendations remain outside the MVP.
 
 ## Local development
 
 Prerequisites: Node.js `24.x` and npm `11.x`.
 
+Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL`, then run:
+
 ```bash
 npm install
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
+
+The seed bootstraps the current 12-destination concept dataset; ongoing content can be updated directly in Neon without changing application code.
 
 Useful checks:
 
