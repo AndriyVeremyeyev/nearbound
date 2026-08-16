@@ -21,6 +21,8 @@ const preferenceSeeds = [
 type DestinationSeed = typeof destinations.$inferInsert & {
   durationMinutes: number;
   preferenceIds: string[];
+  usesFerry?: boolean;
+  crossesBorder?: boolean;
 };
 
 const destinationSeeds: DestinationSeed[] = [
@@ -198,6 +200,7 @@ const destinationSeeds: DestinationSeed[] = [
       "Passports, border variability, and parking make this a two-night trip.",
     published: true,
     durationMinutes: 198,
+    crossesBorder: true,
     preferenceIds: ["animals", "city", "ocean"],
   },
   {
@@ -237,6 +240,7 @@ const destinationSeeds: DestinationSeed[] = [
     caution: "Drive-through animals can scratch mirrors or bodywork.",
     published: true,
     durationMinutes: 156,
+    usesFerry: true,
     preferenceIds: ["animals", "ocean", "resort"],
   },
   {
@@ -362,6 +366,8 @@ await database
       destinationId: destination.id,
       travelMode: "drive",
       durationMinutes: destination.durationMinutes,
+      usesFerry: destination.usesFerry ?? false,
+      crossesBorder: destination.crossesBorder ?? false,
       sourceType: "curated",
       updatedAt: now,
     })),
@@ -374,6 +380,8 @@ await database
     ],
     set: {
       durationMinutes: sql`excluded.duration_minutes`,
+      usesFerry: sql`excluded.uses_ferry`,
+      crossesBorder: sql`excluded.crosses_border`,
       sourceType: sql`excluded.source_type`,
       updatedAt: now,
     },

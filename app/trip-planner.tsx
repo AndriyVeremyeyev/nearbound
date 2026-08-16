@@ -6,6 +6,8 @@ import type { CSSProperties } from "react";
 import { recommendDestinations } from "@/lib/trips/recommend";
 import type {
   DestinationCatalog,
+  ExcludedDestination,
+  ExclusionReason,
   Preference,
 } from "@/lib/trips/types";
 
@@ -33,13 +35,50 @@ const prototypeVisitedDestinationIds = ["sequim", "long-beach"];
 const dayOptions = [
   { value: 1, label: "Day trip" },
   { value: 2, label: "2 days" },
-  { value: 4, label: "3–4 days" },
+  { value: 3, label: "3 days" },
+  { value: 4, label: "4 days" },
 ];
+
+const exclusionLabels: Record<
+  ExclusionReason,
+  { singular: string; plural: string }
+> = {
+  "drive-time": {
+    singular: "beyond drive time",
+    plural: "beyond drive time",
+  },
+  "trip-length": {
+    singular: "outside the trip length",
+    plural: "outside the trip length",
+  },
+  ferry: { singular: "ferry route", plural: "ferry routes" },
+  border: { singular: "border crossing", plural: "border crossings" },
+  visited: { singular: "already visited", plural: "already visited" },
+};
 
 function formatDriveTime(hours: number) {
   const whole = Math.floor(hours);
   const minutes = Math.round((hours - whole) * 60);
   return `${whole}h ${minutes ? `${minutes}m` : ""}`.trim();
+}
+
+function formatExclusionSummary(exclusions: readonly ExcludedDestination[]) {
+  const counts = new Map<ExclusionReason, number>();
+
+  for (const exclusion of exclusions) {
+    for (const reason of exclusion.reasons) {
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    }
+  }
+
+  return Object.entries(exclusionLabels)
+    .map(([reason, labels]) => {
+      const count = counts.get(reason as ExclusionReason) ?? 0;
+      if (count === 0) return null;
+      return `${count} ${count === 1 ? labels.singular : labels.plural}`;
+    })
+    .filter((item): item is string => item !== null)
+    .join(" · ");
 }
 
 export function TripPlanner({ catalog }: TripPlannerProps) {
@@ -50,13 +89,17 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
   const [children, setChildren] = useState(2);
   const [days, setDays] = useState(2);
   const [preferences, setPreferences] = useState<Preference[]>(["animals", "ocean"]);
+  const [allowFerryRoutes, setAllowFerryRoutes] = useState(true);
+  const [allowBorderCrossings, setAllowBorderCrossings] = useState(true);
   const [hideVisited, setHideVisited] = useState(true);
   const [selectedId, setSelectedId] = useState("point-defiance");
   const [searchCount, setSearchCount] = useState(0);
 
-  const ranked = useMemo(
+  const { recommendations: ranked, exclusions } = useMemo(
     () =>
       recommendDestinations(destinations, {
+        allowBorderCrossings,
+        allowFerryRoutes,
         children,
         days,
         hideVisited,
@@ -64,11 +107,21 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
         preferences,
         visitedDestinationIds: prototypeVisitedDestinationIds,
       }),
-    [children, days, destinations, hideVisited, preferences, radius],
+    [
+      allowBorderCrossings,
+      allowFerryRoutes,
+      children,
+      days,
+      destinations,
+      hideVisited,
+      preferences,
+      radius,
+    ],
   );
 
   const topResults = ranked.slice(0, 5);
   const selected = ranked.find((destination) => destination.id === selectedId) ?? topResults[0];
+  const exclusionSummary = formatExclusionSummary(exclusions);
 
   function togglePreference(preference: Preference) {
     setPreferences((current) =>
@@ -122,7 +175,7 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
             <span>01</span>
             <div>
               <p>Your trip brief</p>
-              <small>Four choices. No twenty-field questionnaire.</small>
+              <small>Set the constraints that make or break a short trip.</small>
             </div>
           </div>
 
@@ -218,6 +271,28 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
               ))}
             </div>
           </div>
+
+          <fieldset className="logistics-block">
+            <legend className="field-label">Route logistics</legend>
+            <div className="logistics-options">
+              <label className="logistics-option">
+                <input
+                  type="checkbox"
+                  checked={allowFerryRoutes}
+                  onChange={(event) => setAllowFerryRoutes(event.target.checked)}
+                />
+                <span><strong>Allow ferries</strong><small>Include routes with a ferry crossing</small></span>
+              </label>
+              <label className="logistics-option">
+                <input
+                  type="checkbox"
+                  checked={allowBorderCrossings}
+                  onChange={(event) => setAllowBorderCrossings(event.target.checked)}
+                />
+                <span><strong>Allow borders</strong><small>Include international crossings</small></span>
+              </label>
+            </div>
+          </fieldset>
 
           <label className="check-row">
             <input type="checkbox" checked={hideVisited} onChange={(event) => setHideVisited(event.target.checked)} />
@@ -316,6 +391,8 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
               <div className="tag-row">
                 <span>{formatDriveTime(destination.hours)} drive</span>
                 <span>{destination.minDays === 1 && destination.maxDays <= 2 ? "Day-trip friendly" : `${destination.minDays}–${destination.maxDays} days`}</span>
+                {destination.usesFerry && <span>Ferry route</span>}
+                {destination.crossesBorder && <span>Border crossing</span>}
               </div>
               <div className="micro-plan">
                 <div><span>One strong anchor</span><p>{destination.anchor}</p></div>
@@ -327,12 +404,13 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
         </div>
         {topResults.length === 0 && (
           <div className="empty-state">
-            <h3>No honest match inside this radius.</h3>
-            <p>Increase the drive time or choose fewer preferences—we won’t pretend a rushed weekend is a good fit.</p>
+            <h3>No destination fits every active constraint.</h3>
+            <p>Adjust the drive time, trip length, or route logistics—we won’t pretend a rushed weekend is a good fit.</p>
           </div>
         )}
         <p className="search-status" aria-live="polite">
           {searchCount > 0 ? `Updated with your latest trip brief · search ${searchCount}` : "Adjust the brief above—the ranking updates as you go."}
+          {exclusionSummary && ` · Filtered: ${exclusionSummary}`}
         </p>
       </section>
 

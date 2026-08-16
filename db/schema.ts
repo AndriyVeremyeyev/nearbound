@@ -94,6 +94,8 @@ export const routeEstimates = pgTable(
       .references(() => destinations.id, { onDelete: "cascade" }),
     travelMode: text("travel_mode").notNull().default("drive"),
     durationMinutes: integer("duration_minutes").notNull(),
+    usesFerry: boolean("uses_ferry").notNull().default(false),
+    crossesBorder: boolean("crosses_border").notNull().default(false),
     sourceType: text("source_type").notNull().default("curated"),
     lastVerifiedAt: date("last_verified_at"),
     updatedAt: timestamp("updated_at", { withTimezone: true })

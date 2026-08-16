@@ -6,6 +6,8 @@ const defaultCriteria: TripCriteria = {
   days: 2,
   children: 0,
   preferences: [],
+  allowFerryRoutes: true,
+  allowBorderCrossings: true,
   hideVisited: false,
   visitedDestinationIds: [],
 };
@@ -17,6 +19,8 @@ function createDestination(
     name: overrides.id,
     region: "Test region",
     hours: 2,
+    usesFerry: false,
+    crossesBorder: false,
     minDays: 1,
     maxDays: 4,
     preferences: [],
@@ -42,7 +46,15 @@ describe("recommendDestinations", () => {
       maxDriveHours: 1,
     });
 
-    expect(result.map((destination) => destination.id)).toEqual(["inside"]);
+    expect(
+      result.recommendations.map((destination) => destination.id),
+    ).toEqual(["inside"]);
+    expect(result.exclusions).toEqual([
+      expect.objectContaining({
+        destination: expect.objectContaining({ id: "outside" }),
+        reasons: ["drive-time"],
+      }),
+    ]);
   });
 
   it("hides visited destinations only when requested", () => {
@@ -58,14 +70,17 @@ describe("recommendDestinations", () => {
     });
     const allowed = recommendDestinations(destinations, defaultCriteria);
 
-    expect(hidden.map((destination) => destination.id)).toEqual(["new"]);
-    expect(allowed.map((destination) => destination.id)).toEqual([
+    expect(
+      hidden.recommendations.map((destination) => destination.id),
+    ).toEqual(["new"]);
+    expect(allowed.recommendations.map((destination) => destination.id)).toEqual([
       "new",
       "visited",
     ]);
+    expect(hidden.exclusions[0]).toMatchObject({ reasons: ["visited"] });
   });
 
-  it("ranks a destination suited to the trip length above an otherwise equal option", () => {
+  it("excludes a destination that does not fit the trip length", () => {
     const destinations = [
       createDestination({ id: "wrong-length", minDays: 3, maxDays: 4 }),
       createDestination({ id: "right-length", minDays: 1, maxDays: 2 }),
@@ -73,10 +88,52 @@ describe("recommendDestinations", () => {
 
     const result = recommendDestinations(destinations, defaultCriteria);
 
-    expect(result.map((destination) => destination.id)).toEqual([
-      "right-length",
-      "wrong-length",
+    expect(
+      result.recommendations.map((destination) => destination.id),
+    ).toEqual(["right-length"]);
+    expect(result.exclusions[0]).toMatchObject({
+      destination: { id: "wrong-length" },
+      reasons: ["trip-length"],
+    });
+  });
+
+  it("applies ferry and border preferences as route constraints", () => {
+    const destinations = [
+      createDestination({ id: "local" }),
+      createDestination({ id: "ferry", usesFerry: true }),
+      createDestination({ id: "border", crossesBorder: true }),
+    ];
+
+    const result = recommendDestinations(destinations, {
+      ...defaultCriteria,
+      allowFerryRoutes: false,
+      allowBorderCrossings: false,
+    });
+
+    expect(
+      result.recommendations.map((destination) => destination.id),
+    ).toEqual(["local"]);
+    expect(
+      result.exclusions.map(({ destination, reasons }) => ({
+        id: destination.id,
+        reasons,
+      })),
+    ).toEqual([
+      { id: "ferry", reasons: ["ferry"] },
+      { id: "border", reasons: ["border"] },
     ]);
+  });
+
+  it("keeps every applicable exclusion reason for explanation", () => {
+    const result = recommendDestinations(
+      [createDestination({ id: "difficult", hours: 4, usesFerry: true })],
+      {
+        ...defaultCriteria,
+        allowFerryRoutes: false,
+      },
+    );
+
+    expect(result.exclusions[0].reasons).toEqual(["drive-time", "ferry"]);
   });
 
   it("uses preference matches before drive time to order strong fits", () => {
@@ -98,7 +155,7 @@ describe("recommendDestinations", () => {
       preferences: ["ocean"],
     });
 
-    expect(result[0]).toMatchObject({
+    expect(result.recommendations[0]).toMatchObject({
       id: "ocean-match",
       preferenceMatches: 1,
     });

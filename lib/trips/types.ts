@@ -10,6 +10,8 @@ export type Destination = {
   name: string;
   region: string;
   hours: number;
+  usesFerry: boolean;
+  crossesBorder: boolean;
   minDays: number;
   maxDays: number;
   preferences: Preference[];
@@ -26,6 +28,8 @@ export type TripCriteria = {
   days: number;
   children: number;
   preferences: Preference[];
+  allowFerryRoutes: boolean;
+  allowBorderCrossings: boolean;
   hideVisited: boolean;
   visitedDestinationIds: readonly string[];
 };
@@ -33,6 +37,23 @@ export type TripCriteria = {
 export type RankedDestination = Destination & {
   score: number;
   preferenceMatches: number;
+};
+
+export type ExclusionReason =
+  | "drive-time"
+  | "trip-length"
+  | "ferry"
+  | "border"
+  | "visited";
+
+export type ExcludedDestination = {
+  destination: Destination;
+  reasons: ExclusionReason[];
+};
+
+export type RecommendationResult = {
+  recommendations: RankedDestination[];
+  exclusions: ExcludedDestination[];
 };
 
 export type DestinationCatalog = {
