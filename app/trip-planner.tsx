@@ -1,8 +1,14 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useReducer, useState } from "react";
 import type { CSSProperties } from "react";
 
+import {
+  createInitialPlannerState,
+  plannerReducer,
+  PLANNER_LIMITS,
+  toTripCriteria,
+} from "@/lib/trips/planner-state";
 import { recommendDestinations } from "@/lib/trips/recommend";
 import type {
   DestinationCatalog,
@@ -83,40 +89,32 @@ function formatExclusionSummary(exclusions: readonly ExcludedDestination[]) {
 
 export function TripPlanner({ catalog }: TripPlannerProps) {
   const { destinations, preferenceOptions } = catalog;
-  const [address, setAddress] = useState("Issaquah, WA");
-  const [radius, setRadius] = useState(3);
-  const [adults, setAdults] = useState(2);
-  const [children, setChildren] = useState(2);
-  const [days, setDays] = useState(2);
-  const [preferences, setPreferences] = useState<Preference[]>(["animals", "ocean"]);
-  const [allowFerryRoutes, setAllowFerryRoutes] = useState(true);
-  const [allowBorderCrossings, setAllowBorderCrossings] = useState(true);
-  const [hideVisited, setHideVisited] = useState(true);
+  const [plannerState, dispatch] = useReducer(
+    plannerReducer,
+    undefined,
+    createInitialPlannerState,
+  );
   const [selectedId, setSelectedId] = useState("point-defiance");
   const [searchCount, setSearchCount] = useState(0);
+  const {
+    originQuery: address,
+    maxDriveHours: radius,
+    adults,
+    children,
+    days,
+    preferences,
+    allowFerryRoutes,
+    allowBorderCrossings,
+    hideVisited,
+  } = plannerState;
 
   const { recommendations: ranked, exclusions } = useMemo(
     () =>
-      recommendDestinations(destinations, {
-        allowBorderCrossings,
-        allowFerryRoutes,
-        children,
-        days,
-        hideVisited,
-        maxDriveHours: radius,
-        preferences,
-        visitedDestinationIds: prototypeVisitedDestinationIds,
-      }),
-    [
-      allowBorderCrossings,
-      allowFerryRoutes,
-      children,
-      days,
-      destinations,
-      hideVisited,
-      preferences,
-      radius,
-    ],
+      recommendDestinations(
+        destinations,
+        toTripCriteria(plannerState, prototypeVisitedDestinationIds),
+      ),
+    [destinations, plannerState],
   );
 
   const topResults = ranked.slice(0, 5);
@@ -124,11 +122,7 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
   const exclusionSummary = formatExclusionSummary(exclusions);
 
   function togglePreference(preference: Preference) {
-    setPreferences((current) =>
-      current.includes(preference)
-        ? current.filter((item) => item !== preference)
-        : [...current, preference],
-    );
+    dispatch({ type: "toggle-preference", preference });
   }
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
@@ -185,7 +179,12 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
             <input
               id="address"
               value={address}
-              onChange={(event) => setAddress(event.target.value)}
+              onChange={(event) =>
+                dispatch({
+                  type: "set-origin-query",
+                  value: event.target.value,
+                })
+              }
               placeholder="City or street address"
             />
           </div>
@@ -209,11 +208,11 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
                 <div><span>{adults}</span><small>adults</small></div>
                 <div><span>{children}</span><small>kids</small></div>
                 <div className="stepper-buttons">
-                  <button type="button" onClick={() => setChildren((value) => Math.max(0, value - 1))} aria-label="Remove one child">−</button>
-                  <button type="button" onClick={() => setChildren((value) => Math.min(6, value + 1))} aria-label="Add one child">+</button>
+                  <button type="button" onClick={() => dispatch({ type: "set-children", value: children - 1 })} aria-label="Remove one child">−</button>
+                  <button type="button" onClick={() => dispatch({ type: "set-children", value: children + 1 })} aria-label="Add one child">+</button>
                 </div>
               </div>
-              <button className="adult-toggle" type="button" onClick={() => setAdults((value) => value === 2 ? 1 : 2)}>
+              <button className="adult-toggle" type="button" onClick={() => dispatch({ type: "set-adults", value: adults === 2 ? 1 : 2 })}>
                 {adults === 2 ? "Two adults" : "One adult"}
               </button>
             </div>
@@ -227,11 +226,16 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
             <input
               className="range-input"
               type="range"
-              min="1"
-              max="6"
+              min={PLANNER_LIMITS.maxDriveHours.min}
+              max={PLANNER_LIMITS.maxDriveHours.max}
               step="0.5"
               value={radius}
-              onChange={(event) => setRadius(Number(event.target.value))}
+              onChange={(event) =>
+                dispatch({
+                  type: "set-max-drive-hours",
+                  value: Number(event.target.value),
+                })
+              }
               aria-label="Maximum drive time in hours"
             />
             <div className="range-labels" aria-hidden="true"><span>1 hour</span><span>6 hours</span></div>
@@ -246,7 +250,9 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
                   type="button"
                   className={days === option.value ? "active" : ""}
                   aria-pressed={days === option.value}
-                  onClick={() => setDays(option.value)}
+                  onClick={() =>
+                    dispatch({ type: "set-days", value: option.value })
+                  }
                 >
                   {option.label}
                 </button>
@@ -279,7 +285,12 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
                 <input
                   type="checkbox"
                   checked={allowFerryRoutes}
-                  onChange={(event) => setAllowFerryRoutes(event.target.checked)}
+                  onChange={(event) =>
+                    dispatch({
+                      type: "set-allow-ferry-routes",
+                      value: event.target.checked,
+                    })
+                  }
                 />
                 <span><strong>Allow ferries</strong><small>Include routes with a ferry crossing</small></span>
               </label>
@@ -287,7 +298,12 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
                 <input
                   type="checkbox"
                   checked={allowBorderCrossings}
-                  onChange={(event) => setAllowBorderCrossings(event.target.checked)}
+                  onChange={(event) =>
+                    dispatch({
+                      type: "set-allow-border-crossings",
+                      value: event.target.checked,
+                    })
+                  }
                 />
                 <span><strong>Allow borders</strong><small>Include international crossings</small></span>
               </label>
@@ -295,7 +311,16 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
           </fieldset>
 
           <label className="check-row">
-            <input type="checkbox" checked={hideVisited} onChange={(event) => setHideVisited(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={hideVisited}
+              onChange={(event) =>
+                dispatch({
+                  type: "set-hide-visited",
+                  value: event.target.checked,
+                })
+              }
+            />
             <span>Hide places we’ve already visited</span>
           </label>
 

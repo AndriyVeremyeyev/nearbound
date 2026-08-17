@@ -27,7 +27,7 @@ export type TripCriteria = {
   maxDriveHours: number;
   days: number;
   children: number;
-  preferences: Preference[];
+  preferences: readonly Preference[];
   allowFerryRoutes: boolean;
   allowBorderCrossings: boolean;
   hideVisited: boolean;

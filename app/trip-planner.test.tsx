@@ -71,4 +71,23 @@ describe("Nearbound concept prototype", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/filtered: 1 ferry route/i)).toBeInTheDocument();
   });
+
+  it("keeps workspace controls connected to the shared planner state", () => {
+    render(<TripPlanner catalog={catalog} />);
+
+    fireEvent.change(screen.getByLabelText("Starting point"), {
+      target: { value: "Portland, OR" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Day trip" }));
+    fireEvent.click(screen.getByLabelText(/allow borders/i));
+
+    expect(
+      screen.getByText(/recommendations still use the Issaquah demo dataset/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Day trip" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByLabelText(/allow borders/i)).not.toBeChecked();
+  });
 });
