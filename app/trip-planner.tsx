@@ -16,6 +16,7 @@ import type {
   ExclusionReason,
   Preference,
 } from "@/lib/trips/types";
+import { PlannerWizard } from "./planner-wizard";
 
 type TripPlannerProps = {
   catalog: DestinationCatalog;
@@ -96,6 +97,7 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
   );
   const [selectedId, setSelectedId] = useState("point-defiance");
   const [searchCount, setSearchCount] = useState(0);
+  const [showWizard, setShowWizard] = useState(true);
   const {
     originQuery: address,
     maxDriveHours: radius,
@@ -132,6 +134,13 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
     document.getElementById("matches")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  function restartPlanner() {
+    dispatch({ type: "reset" });
+    setSelectedId("point-defiance");
+    setSearchCount(0);
+    setShowWizard(true);
+  }
+
   const isIssaquah = /issaquah/i.test(address);
 
   return (
@@ -163,7 +172,16 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
         </div>
       </section>
 
-      <section className="planner-shell" aria-label="Trip planner">
+      {showWizard ? (
+        <PlannerWizard
+          state={plannerState}
+          preferenceOptions={preferenceOptions}
+          dispatch={dispatch}
+          onComplete={() => setShowWizard(false)}
+        />
+      ) : (
+        <>
+      <section className="planner-shell" id="planner-workspace" aria-label="Trip planner">
         <form className="planner-card" onSubmit={handleSearch}>
           <div className="section-heading">
             <span>01</span>
@@ -171,6 +189,11 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
               <p>Your trip brief</p>
               <small>Set the constraints that make or break a short trip.</small>
             </div>
+          </div>
+
+          <div className="workspace-actions" aria-label="Setup actions">
+            <button type="button" onClick={() => setShowWizard(true)}>Edit setup</button>
+            <button type="button" onClick={restartPlanner}>Start over</button>
           </div>
 
           <label className="field-label" htmlFor="address">Starting point</label>
@@ -205,16 +228,41 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
             <div>
               <span className="field-label">Travelers</span>
               <div className="travelers">
-                <div><span>{adults}</span><small>adults</small></div>
-                <div><span>{children}</span><small>kids</small></div>
-                <div className="stepper-buttons">
-                  <button type="button" onClick={() => dispatch({ type: "set-children", value: children - 1 })} aria-label="Remove one child">−</button>
-                  <button type="button" onClick={() => dispatch({ type: "set-children", value: children + 1 })} aria-label="Add one child">+</button>
+                <div className="traveler-row">
+                  <span><strong>{adults}</strong><small>adults</small></span>
+                  <div className="stepper-buttons">
+                    <button
+                      type="button"
+                      disabled={adults === PLANNER_LIMITS.adults.min}
+                      onClick={() => dispatch({ type: "set-adults", value: adults - 1 })}
+                      aria-label="Remove one adult"
+                    >−</button>
+                    <button
+                      type="button"
+                      disabled={adults === PLANNER_LIMITS.adults.max}
+                      onClick={() => dispatch({ type: "set-adults", value: adults + 1 })}
+                      aria-label="Add one adult"
+                    >+</button>
+                  </div>
+                </div>
+                <div className="traveler-row">
+                  <span><strong>{children}</strong><small>kids</small></span>
+                  <div className="stepper-buttons">
+                    <button
+                      type="button"
+                      disabled={children === PLANNER_LIMITS.children.min}
+                      onClick={() => dispatch({ type: "set-children", value: children - 1 })}
+                      aria-label="Remove one child"
+                    >−</button>
+                    <button
+                      type="button"
+                      disabled={children === PLANNER_LIMITS.children.max}
+                      onClick={() => dispatch({ type: "set-children", value: children + 1 })}
+                      aria-label="Add one child"
+                    >+</button>
+                  </div>
                 </div>
               </div>
-              <button className="adult-toggle" type="button" onClick={() => dispatch({ type: "set-adults", value: adults === 2 ? 1 : 2 })}>
-                {adults === 2 ? "Two adults" : "One adult"}
-              </button>
             </div>
           </div>
 
@@ -451,6 +499,8 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
           {exclusionSummary && ` · Filtered: ${exclusionSummary}`}
         </p>
       </section>
+        </>
+      )}
 
       <section className="principle-section">
         <p className="eyebrow">The product principle</p>

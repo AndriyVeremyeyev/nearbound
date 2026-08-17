@@ -21,11 +21,12 @@ Nearbound is intended to return a short, ranked list and explain:
 
 The existing concept spike includes:
 
+- a four-step guided setup for origin, time, travelers, experiences, and route logistics;
 - an origin field and travel-radius control;
 - party size, trip length, and experience filters;
 - a deterministic ranking over 12 curated destinations;
 - visible reasons, cautions, and stay suggestions;
-- a single workspace where filters and results can be changed without restarting a questionnaire;
+- a single workspace where the same answers and results can be changed without restarting the setup;
 - a stylized map used to test the visual direction.
 
 Important limitations:

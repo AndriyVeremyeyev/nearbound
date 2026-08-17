@@ -30,11 +30,24 @@ const catalog: DestinationCatalog = {
   ],
 };
 
+function completeWizard() {
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  fireEvent.click(screen.getByRole("button", { name: "Show my trips" }));
+}
+
 describe("Nearbound concept prototype", () => {
   it("renders the planner with a server-provided destination catalog", () => {
     render(<TripPlanner catalog={catalog} />);
 
+    expect(
+      screen.getByRole("heading", { name: "Where are you starting?" }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
+
+    completeWizard();
+
     expect(
       screen.getByRole("heading", { name: "Your best fits" }),
     ).toBeInTheDocument();
@@ -62,6 +75,7 @@ describe("Nearbound concept prototype", () => {
     };
 
     render(<TripPlanner catalog={ferryCatalog} />);
+    completeWizard();
     fireEvent.click(screen.getByLabelText(/allow ferries/i));
 
     expect(
@@ -72,14 +86,19 @@ describe("Nearbound concept prototype", () => {
     expect(screen.getByText(/filtered: 1 ferry route/i)).toBeInTheDocument();
   });
 
-  it("keeps workspace controls connected to the shared planner state", () => {
+  it("carries wizard answers into the editable workspace", () => {
     render(<TripPlanner catalog={catalog} />);
 
     fireEvent.change(screen.getByLabelText("Starting point"), {
       target: { value: "Portland, OR" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Day trip" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByLabelText("Add one child"));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByLabelText(/allow borders/i));
+    fireEvent.click(screen.getByRole("button", { name: "Show my trips" }));
 
     expect(
       screen.getByText(/recommendations still use the Issaquah demo dataset/i),
@@ -89,5 +108,37 @@ describe("Nearbound concept prototype", () => {
       "true",
     );
     expect(screen.getByLabelText(/allow borders/i)).not.toBeChecked();
+    expect(screen.getByText("3", { selector: ".traveler-row strong" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit setup" }));
+    expect(screen.getByLabelText("Starting point")).toHaveValue("Portland, OR");
+  });
+
+  it("supports back, skip, and a full restart", () => {
+    render(<TripPlanner catalog={catalog} />);
+
+    fireEvent.change(screen.getByLabelText("Starting point"), {
+      target: { value: "Bellingham, WA" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
+    expect(
+      screen.getByRole("heading", { name: "How much time do you have?" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(
+      screen.getByRole("heading", { name: "How much time do you have?" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show my trips" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start over" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Where are you starting?" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
   });
 });
