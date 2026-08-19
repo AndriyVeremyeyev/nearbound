@@ -5,16 +5,17 @@ import {
   destinations as destinationsTable,
   preferences,
   routeEstimates,
+  sourceReferences,
 } from "@/db/schema";
 import { getDatabase } from "@/lib/db/client";
-import type { Destination, DestinationCatalog } from "./types";
+import type { Destination, DestinationCatalog, SourceReference } from "./types";
 
 const DEFAULT_ORIGIN_ID = "issaquah-wa";
 
 export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
   const database = getDatabase();
 
-  const [rows, preferenceOptions] = await Promise.all([
+  const [rows, preferenceOptions, sourceRows] = await Promise.all([
     database
       .select({
         id: destinationsTable.id,
@@ -56,7 +57,37 @@ export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
       .select({ id: preferences.id, label: preferences.label })
       .from(preferences)
       .orderBy(preferences.sortOrder),
+    database
+      .select({
+        destinationId: sourceReferences.destinationId,
+        title: sourceReferences.title,
+        url: sourceReferences.url,
+        sourceType: sourceReferences.sourceType,
+        lastVerifiedAt: sourceReferences.lastVerifiedAt,
+        confidence: sourceReferences.confidence,
+      })
+      .from(sourceReferences)
+      .innerJoin(
+        destinationsTable,
+        eq(destinationsTable.id, sourceReferences.destinationId),
+      )
+      .where(eq(destinationsTable.published, true))
+      .orderBy(sourceReferences.destinationId, sourceReferences.id),
   ]);
+
+  const sourcesByDestinationId = new Map<string, SourceReference[]>();
+
+  for (const source of sourceRows) {
+    const sources = sourcesByDestinationId.get(source.destinationId) ?? [];
+    sources.push({
+      title: source.title,
+      url: source.url,
+      sourceType: source.sourceType,
+      lastVerifiedAt: source.lastVerifiedAt,
+      confidence: source.confidence as SourceReference["confidence"],
+    });
+    sourcesByDestinationId.set(source.destinationId, sources);
+  }
 
   const destinationsById = new Map<string, Destination>();
 
@@ -84,6 +115,7 @@ export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
       anchor: row.anchor,
       stay: row.stay,
       caution: row.caution,
+      sourceReferences: sourcesByDestinationId.get(row.id) ?? [],
     });
   }
 

@@ -503,6 +503,18 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
                   <span>Reality check</span>
                   <p>{destination.tradeoffs[0] ? `${destination.tradeoffs[0]} ${destination.caution}` : destination.caution}</p>
                 </div>
+                {destination.sourceReferences[0]?.url && (
+                  <div className="source-reference">
+                    <span>Research source</span>
+                    <a
+                      href={destination.sourceReferences[0].url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {destination.sourceReferences[0].title} ↗
+                    </a>
+                  </div>
+                )}
               </div>
             </article>
           ))}

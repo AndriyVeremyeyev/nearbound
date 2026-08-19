@@ -21,6 +21,15 @@ export type Destination = {
   anchor: string;
   stay: string;
   caution: string;
+  sourceReferences: SourceReference[];
+};
+
+export type SourceReference = {
+  title: string;
+  url: string | null;
+  sourceType: string;
+  lastVerifiedAt: string | null;
+  confidence: "low" | "medium" | "high";
 };
 
 export type TripCriteria = {

@@ -279,6 +279,9 @@ main { min-height: 100vh; overflow: hidden; }
 .micro-plan .match-explanation span { color: var(--teal); }
 .micro-plan .caution { padding-top: 12px; border-top: 1px dashed var(--line); }
 .micro-plan .caution span { color: var(--orange-deep); }
+.micro-plan .source-reference { padding-top: 2px; }
+.source-reference a { width: fit-content; color: var(--teal); font-size: 11px; font-weight: 750; text-decoration: underline; text-decoration-color: rgba(29,122,113,.35); text-underline-offset: 3px; }
+.source-reference a:hover { color: var(--ink); text-decoration-color: currentColor; }
 .empty-state { padding: 48px; text-align: center; border: 1px solid var(--line); background: var(--white); }
 .empty-state h3 { margin: 0 0 8px; font-size: 26px; }
 .empty-state p { margin: 0; color: var(--ink-soft); }

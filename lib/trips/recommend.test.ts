@@ -30,6 +30,7 @@ function createDestination(
     anchor: "Test anchor",
     stay: "Test stay",
     caution: "Test caution",
+    sourceReferences: [],
     ...overrides,
   };
 }

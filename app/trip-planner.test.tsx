@@ -21,6 +21,15 @@ const catalog: DestinationCatalog = {
       anchor: "Visit the aquarium.",
       stay: "Make it a day trip.",
       caution: "Arrive early.",
+      sourceReferences: [
+        {
+          title: "Point Defiance Zoo & Aquarium",
+          url: "https://www.pdza.org/",
+          sourceType: "official",
+          lastVerifiedAt: "2026-08-19",
+          confidence: "high",
+        },
+      ],
     },
   ],
   preferenceOptions: [
@@ -62,6 +71,9 @@ describe("Nearbound concept prototype", () => {
       screen.getByText(/matches all selected experiences: animals and ocean/i),
     ).toBeInTheDocument();
     expect(screen.getByText("trip match")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /point defiance zoo & aquarium/i }),
+    ).toHaveAttribute("href", "https://www.pdza.org/");
     expect(screen.getByText(/ranking updates as you go/i)).toBeInTheDocument();
   });
 

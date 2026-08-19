@@ -6,6 +6,7 @@ import {
   origins,
   preferences,
   routeEstimates,
+  sourceReferences,
 } from "./schema";
 import { loadLocalEnvironment } from "./load-local-env";
 
@@ -18,12 +19,20 @@ const preferenceSeeds = [
   { id: "forest", label: "Forest", sortOrder: 6 },
 ];
 
+type DestinationSourceSeed = Pick<
+  typeof sourceReferences.$inferInsert,
+  "title" | "url" | "sourceType" | "confidence" | "notes"
+>;
+
 type DestinationSeed = typeof destinations.$inferInsert & {
   durationMinutes: number;
   preferenceIds: string[];
   usesFerry?: boolean;
   crossesBorder?: boolean;
+  sourceReference: DestinationSourceSeed;
 };
+
+const SOURCE_VERIFIED_ON = "2026-08-19";
 
 const destinationSeeds: DestinationSeed[] = [
   {
@@ -44,6 +53,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 72,
     preferenceIds: ["animals", "ocean", "city"],
+    sourceReference: {
+      title: "Point Defiance Zoo & Aquarium",
+      url: "https://www.pdza.org/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official attraction website used for the visitor-planning anchor.",
+    },
   },
   {
     id: "northwest-trek",
@@ -64,6 +80,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 108,
     preferenceIds: ["animals", "forest", "mountains"],
+    sourceReference: {
+      title: "Northwest Trek Wildlife Park",
+      url: "https://www.nwtrek.org/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official attraction website used for the visitor-planning anchor.",
+    },
   },
   {
     id: "ocean-shores",
@@ -84,6 +107,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 174,
     preferenceIds: ["ocean", "resort"],
+    sourceReference: {
+      title: "Tourism Ocean Shores",
+      url: "https://tourismoceanshores.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
   },
   {
     id: "bellingham",
@@ -103,6 +133,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 132,
     preferenceIds: ["city", "ocean", "animals", "forest"],
+    sourceReference: {
+      title: "Visit Bellingham",
+      url: "https://www.bellingham.org/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
   },
   {
     id: "alderbrook",
@@ -122,6 +159,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 132,
     preferenceIds: ["ocean", "resort", "forest"],
+    sourceReference: {
+      title: "Alderbrook Resort & Spa",
+      url: "https://www.alderbrookresort.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official property website used for the stay recommendation.",
+    },
   },
   {
     id: "great-wolf",
@@ -141,6 +185,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 96,
     preferenceIds: ["resort", "city"],
+    sourceReference: {
+      title: "Great Wolf Lodge Grand Mound",
+      url: "https://www.greatwolf.com/grand-mound",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official property website used for the stay recommendation.",
+    },
   },
   {
     id: "suncadia",
@@ -161,6 +212,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 90,
     preferenceIds: ["resort", "mountains", "forest"],
+    sourceReference: {
+      title: "Suncadia Resort",
+      url: "https://suncadia.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official property website used for the stay recommendation.",
+    },
   },
   {
     id: "leavenworth",
@@ -181,6 +239,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 162,
     preferenceIds: ["city", "mountains", "resort"],
+    sourceReference: {
+      title: "Leavenworth Chamber of Commerce",
+      url: "https://leavenworth.org/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
   },
   {
     id: "vancouver",
@@ -202,6 +267,13 @@ const destinationSeeds: DestinationSeed[] = [
     durationMinutes: 198,
     crossesBorder: true,
     preferenceIds: ["animals", "city", "ocean"],
+    sourceReference: {
+      title: "Vancouver Aquarium",
+      url: "https://www.vanaqua.org/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official attraction website used for the visitor-planning anchor.",
+    },
   },
   {
     id: "seabrook",
@@ -222,6 +294,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 204,
     preferenceIds: ["ocean", "resort"],
+    sourceReference: {
+      title: "Seabrook Washington",
+      url: "https://www.seabrookwa.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official destination website used for the stay recommendation.",
+    },
   },
   {
     id: "sequim",
@@ -242,6 +321,13 @@ const destinationSeeds: DestinationSeed[] = [
     durationMinutes: 156,
     usesFerry: true,
     preferenceIds: ["animals", "ocean", "resort"],
+    sourceReference: {
+      title: "Olympic Game Farm",
+      url: "https://olygamefarm.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official attraction website used for the visitor-planning anchor.",
+    },
   },
   {
     id: "long-beach",
@@ -261,6 +347,13 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 210,
     preferenceIds: ["ocean", "resort", "city"],
+    sourceReference: {
+      title: "Washington's Evergreen Coast",
+      url: "https://www.evergreencoastwa.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
   },
 ];
 
@@ -349,6 +442,10 @@ await database
   .delete(destinationPreferences)
   .where(inArray(destinationPreferences.destinationId, destinationIds));
 
+await database
+  .delete(sourceReferences)
+  .where(inArray(sourceReferences.destinationId, destinationIds));
+
 await database.insert(destinationPreferences).values(
   destinationSeeds.flatMap((destination) =>
     destination.preferenceIds.map((preferenceId) => ({
@@ -356,6 +453,15 @@ await database.insert(destinationPreferences).values(
       preferenceId,
     })),
   ),
+);
+
+await database.insert(sourceReferences).values(
+  destinationSeeds.map((destination) => ({
+    destinationId: destination.id,
+    ...destination.sourceReference,
+    lastVerifiedAt: SOURCE_VERIFIED_ON,
+    updatedAt: now,
+  })),
 );
 
 await database
