@@ -42,7 +42,7 @@ describe("Nearbound concept prototype", () => {
     render(<TripPlanner catalog={catalog} />);
 
     expect(
-      screen.getByRole("heading", { name: "Where are you starting?" }),
+      screen.getByRole("heading", { name: "Tell us the trip basics" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
 
@@ -92,10 +92,11 @@ describe("Nearbound concept prototype", () => {
     fireEvent.change(screen.getByLabelText("Starting point"), {
       target: { value: "Portland, OR" },
     });
+    fireEvent.click(screen.getByLabelText("Traveling with children"));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Day trip" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByLabelText("Add one child"));
+    fireEvent.click(screen.getByRole("button", { name: "City" }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByLabelText(/allow borders/i));
     fireEvent.click(screen.getByRole("button", { name: "Show my trips" }));
@@ -108,7 +109,11 @@ describe("Nearbound concept prototype", () => {
       "true",
     );
     expect(screen.getByLabelText(/allow borders/i)).not.toBeChecked();
-    expect(screen.getByText("3", { selector: ".traveler-row strong" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Traveling with children")).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "City" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Edit setup" }));
     expect(screen.getByLabelText("Starting point")).toHaveValue("Portland, OR");
@@ -120,24 +125,30 @@ describe("Nearbound concept prototype", () => {
     fireEvent.change(screen.getByLabelText("Starting point"), {
       target: { value: "Bellingham, WA" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(
       screen.getByRole("heading", { name: "How much time do you have?" }),
     ).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(
       screen.getByRole("heading", { name: "How much time do you have?" }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show my trips" }));
+    const skipButton = screen.getByRole("button", { name: "Skip for now" });
+    expect(skipButton.parentElement).toHaveClass("wizard-heading-bar");
+    fireEvent.click(skipButton);
+    expect(
+      screen.getByRole("heading", { name: "Your best fits" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Starting point")).toHaveValue(
+      "Bellingham, WA",
+    );
+
     fireEvent.click(screen.getByRole("button", { name: "Start over" }));
 
     expect(
-      screen.getByRole("heading", { name: "Where are you starting?" }),
+      screen.getByRole("heading", { name: "Tell us the trip basics" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
   });

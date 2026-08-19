@@ -26,7 +26,7 @@ export type Destination = {
 export type TripCriteria = {
   maxDriveHours: number;
   days: number;
-  children: number;
+  travelingWithChildren: boolean;
   preferences: readonly Preference[];
   allowFerryRoutes: boolean;
   allowBorderCrossings: boolean;
@@ -37,7 +37,7 @@ export type TripCriteria = {
 export type ScoreFactorId =
   | "experience"
   | "drive-time"
-  | "group-fit"
+  | "family-fit"
   | "weather-backup"
   | "logistics";
 

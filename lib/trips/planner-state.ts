@@ -3,8 +3,7 @@ import type { Preference, TripCriteria } from "./types";
 export type PlannerState = {
   originQuery: string;
   maxDriveHours: number;
-  adults: number;
-  children: number;
+  travelingWithChildren: boolean;
   days: number;
   preferences: Preference[];
   allowFerryRoutes: boolean;
@@ -15,8 +14,7 @@ export type PlannerState = {
 export type PlannerAction =
   | { type: "set-origin-query"; value: string }
   | { type: "set-max-drive-hours"; value: number }
-  | { type: "set-adults"; value: number }
-  | { type: "set-children"; value: number }
+  | { type: "set-traveling-with-children"; value: boolean }
   | { type: "set-days"; value: number }
   | { type: "toggle-preference"; preference: Preference }
   | { type: "set-allow-ferry-routes"; value: boolean }
@@ -26,8 +24,6 @@ export type PlannerAction =
 
 export const PLANNER_LIMITS = {
   maxDriveHours: { min: 1, max: 6 },
-  adults: { min: 1, max: 6 },
-  children: { min: 0, max: 6 },
   days: { min: 1, max: 4 },
 } as const;
 
@@ -39,8 +35,7 @@ export function createInitialPlannerState(): PlannerState {
   return {
     originQuery: "Issaquah, WA",
     maxDriveHours: 3,
-    adults: 2,
-    children: 2,
+    travelingWithChildren: true,
     days: 2,
     preferences: ["animals", "ocean"],
     allowFerryRoutes: true,
@@ -65,24 +60,8 @@ export function plannerReducer(
           PLANNER_LIMITS.maxDriveHours.max,
         ),
       };
-    case "set-adults":
-      return {
-        ...state,
-        adults: clamp(
-          action.value,
-          PLANNER_LIMITS.adults.min,
-          PLANNER_LIMITS.adults.max,
-        ),
-      };
-    case "set-children":
-      return {
-        ...state,
-        children: clamp(
-          action.value,
-          PLANNER_LIMITS.children.min,
-          PLANNER_LIMITS.children.max,
-        ),
-      };
+    case "set-traveling-with-children":
+      return { ...state, travelingWithChildren: action.value };
     case "set-days":
       return {
         ...state,
@@ -119,7 +98,7 @@ export function toTripCriteria(
   return {
     maxDriveHours: state.maxDriveHours,
     days: state.days,
-    children: state.children,
+    travelingWithChildren: state.travelingWithChildren,
     preferences: state.preferences,
     allowFerryRoutes: state.allowFerryRoutes,
     allowBorderCrossings: state.allowBorderCrossings,

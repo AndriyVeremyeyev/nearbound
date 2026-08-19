@@ -4,7 +4,7 @@ import type { Destination, TripCriteria } from "./types";
 const defaultCriteria: TripCriteria = {
   maxDriveHours: 3,
   days: 2,
-  children: 0,
+  travelingWithChildren: false,
   preferences: [],
   allowFerryRoutes: true,
   allowBorderCrossings: true,
@@ -174,7 +174,7 @@ describe("recommendDestinations", () => {
     expect(SCORE_WEIGHTS).toEqual({
       experience: 30,
       driveTime: 25,
-      groupFit: 20,
+      familyFit: 20,
       weatherBackup: 15,
       logistics: 10,
     });
@@ -208,12 +208,45 @@ describe("recommendDestinations", () => {
           sentiment: "neutral",
         }),
         expect.objectContaining({
-          id: "group-fit",
+          id: "family-fit",
           score: 12,
           sentiment: "neutral",
         }),
       ]),
     );
+  });
+
+  it("uses family fit only when the trip includes children", () => {
+    const destinations = [
+      createDestination({
+        id: "closer-general-option",
+        hours: 1,
+        familyFit: 3,
+      }),
+      createDestination({
+        id: "family-option",
+        hours: 2,
+        familyFit: 10,
+      }),
+    ];
+
+    const withoutChildren = recommendDestinations(
+      destinations,
+      defaultCriteria,
+    );
+    const withChildren = recommendDestinations(destinations, {
+      ...defaultCriteria,
+      travelingWithChildren: true,
+    });
+
+    expect(withoutChildren.recommendations.map(({ id }) => id)).toEqual([
+      "closer-general-option",
+      "family-option",
+    ]);
+    expect(withChildren.recommendations.map(({ id }) => id)).toEqual([
+      "family-option",
+      "closer-general-option",
+    ]);
   });
 
   it("keeps route friction visible even when the route is allowed", () => {

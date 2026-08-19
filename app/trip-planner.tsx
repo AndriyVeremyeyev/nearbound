@@ -101,8 +101,7 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
   const {
     originQuery: address,
     maxDriveHours: radius,
-    adults,
-    children,
+    travelingWithChildren,
     days,
     preferences,
     allowFerryRoutes,
@@ -226,43 +225,24 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
               </div>
             </div>
             <div>
-              <span className="field-label">Travelers</span>
-              <div className="travelers">
-                <div className="traveler-row">
-                  <span><strong>{adults}</strong><small>adults</small></span>
-                  <div className="stepper-buttons">
-                    <button
-                      type="button"
-                      disabled={adults === PLANNER_LIMITS.adults.min}
-                      onClick={() => dispatch({ type: "set-adults", value: adults - 1 })}
-                      aria-label="Remove one adult"
-                    >−</button>
-                    <button
-                      type="button"
-                      disabled={adults === PLANNER_LIMITS.adults.max}
-                      onClick={() => dispatch({ type: "set-adults", value: adults + 1 })}
-                      aria-label="Add one adult"
-                    >+</button>
-                  </div>
-                </div>
-                <div className="traveler-row">
-                  <span><strong>{children}</strong><small>kids</small></span>
-                  <div className="stepper-buttons">
-                    <button
-                      type="button"
-                      disabled={children === PLANNER_LIMITS.children.min}
-                      onClick={() => dispatch({ type: "set-children", value: children - 1 })}
-                      aria-label="Remove one child"
-                    >−</button>
-                    <button
-                      type="button"
-                      disabled={children === PLANNER_LIMITS.children.max}
-                      onClick={() => dispatch({ type: "set-children", value: children + 1 })}
-                      aria-label="Add one child"
-                    >+</button>
-                  </div>
-                </div>
-              </div>
+              <span className="field-label">Family fit</span>
+              <label className="logistics-option family-fit-option compact">
+                <input
+                  type="checkbox"
+                  aria-label="Traveling with children"
+                  checked={travelingWithChildren}
+                  onChange={(event) =>
+                    dispatch({
+                      type: "set-traveling-with-children",
+                      value: event.target.checked,
+                    })
+                  }
+                />
+                <span>
+                  <strong>Traveling with children</strong>
+                  <small>Prioritize family-friendly fit</small>
+                </span>
+              </label>
             </div>
           </div>
 
@@ -440,7 +420,7 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
             <h2>Your best fits</h2>
           </div>
           <p>
-            Every option already fits your hard constraints. Experience match, drive-time margin, group fit,
+            Every option already fits your hard constraints. Experience match, drive-time margin, family fit,
             weather backup, and route simplicity decide the order.
           </p>
         </div>

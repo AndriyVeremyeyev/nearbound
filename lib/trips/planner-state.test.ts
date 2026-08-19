@@ -13,8 +13,7 @@ describe("plannerReducer", () => {
     expect(first).toEqual({
       originQuery: "Issaquah, WA",
       maxDriveHours: 3,
-      adults: 2,
-      children: 2,
+      travelingWithChildren: true,
       days: 2,
       preferences: ["animals", "ocean"],
       allowFerryRoutes: true,
@@ -40,31 +39,34 @@ describe("plannerReducer", () => {
     expect(restored.preferences).toEqual(["animals", "ocean"]);
   });
 
+  it("records whether family fit should apply without collecting party size", () => {
+    const withoutChildren = plannerReducer(createInitialPlannerState(), {
+      type: "set-traveling-with-children",
+      value: false,
+    });
+
+    expect(withoutChildren.travelingWithChildren).toBe(false);
+    expect(withoutChildren).not.toHaveProperty("adults");
+    expect(withoutChildren).not.toHaveProperty("children");
+  });
+
   it("keeps numeric answers inside the supported MVP limits", () => {
     const initial = createInitialPlannerState();
     const tooSmall = [
       { type: "set-max-drive-hours" as const, value: 0 },
-      { type: "set-adults" as const, value: 0 },
-      { type: "set-children" as const, value: -1 },
       { type: "set-days" as const, value: 0 },
     ].reduce(plannerReducer, initial);
     const tooLarge = [
       { type: "set-max-drive-hours" as const, value: 99 },
-      { type: "set-adults" as const, value: 99 },
-      { type: "set-children" as const, value: 99 },
       { type: "set-days" as const, value: 99 },
     ].reduce(plannerReducer, initial);
 
     expect(tooSmall).toMatchObject({
       maxDriveHours: PLANNER_LIMITS.maxDriveHours.min,
-      adults: PLANNER_LIMITS.adults.min,
-      children: PLANNER_LIMITS.children.min,
       days: PLANNER_LIMITS.days.min,
     });
     expect(tooLarge).toMatchObject({
       maxDriveHours: PLANNER_LIMITS.maxDriveHours.max,
-      adults: PLANNER_LIMITS.adults.max,
-      children: PLANNER_LIMITS.children.max,
       days: PLANNER_LIMITS.days.max,
     });
   });
@@ -87,7 +89,7 @@ describe("plannerReducer", () => {
     expect(criteria).toEqual({
       maxDriveHours: 3,
       days: 2,
-      children: 2,
+      travelingWithChildren: true,
       preferences: ["animals", "ocean"],
       allowFerryRoutes: true,
       allowBorderCrossings: true,
@@ -96,5 +98,6 @@ describe("plannerReducer", () => {
     });
     expect(criteria).not.toHaveProperty("originQuery");
     expect(criteria).not.toHaveProperty("adults");
+    expect(criteria).not.toHaveProperty("children");
   });
 });

@@ -18,10 +18,10 @@ type PlannerWizardProps = {
 
 const steps = [
   {
-    label: "Start",
-    title: "Where are you starting?",
+    label: "Basics",
+    title: "Tell us the trip basics",
     description:
-      "A city is enough for now. Exact geocoding comes in a later Nearbound milestone.",
+      "Start with your city and whether family-friendly fit should shape the ranking.",
   },
   {
     label: "Time",
@@ -30,16 +30,16 @@ const steps = [
       "Choose the trip length and the longest drive that still feels reasonable.",
   },
   {
-    label: "Travelers",
-    title: "Who is coming along?",
+    label: "Interests",
+    title: "What sounds good?",
     description:
-      "Party size helps Nearbound balance ambitious ideas with an easier pace.",
+      "Choose any experiences you would be happy to build a short trip around.",
   },
   {
-    label: "Priorities",
-    title: "What should this trip feel like?",
+    label: "Boundaries",
+    title: "Set your boundaries",
     description:
-      "Pick any experiences that sound good and remove logistics you do not want.",
+      "Keep or remove the route logistics and familiar places that affect your shortlist.",
   },
 ] as const;
 
@@ -105,32 +105,62 @@ export function PlannerWizard({
 
       <form className="wizard-card" onSubmit={handleSubmit}>
         <div className="wizard-heading">
-          <p className="eyebrow">First-run setup</p>
+          <div className="wizard-heading-bar">
+            <p className="eyebrow">First-run setup</p>
+            {!isLastStep && (
+              <button className="wizard-secondary-button" type="button" onClick={onComplete}>
+                Skip for now
+              </button>
+            )}
+          </div>
           <h2 id="wizard-title">{step.title}</h2>
           <p>{step.description}</p>
         </div>
 
         <div className="wizard-content">
           {stepIndex === 0 && (
-            <div>
-              <label className="field-label" htmlFor="wizard-origin">Starting point</label>
-              <div className="address-field wizard-address-field">
-                <span className="pin-mini" aria-hidden="true" />
-                <input
-                  id="wizard-origin"
-                  value={state.originQuery}
-                  onChange={(event) =>
-                    dispatch({
-                      type: "set-origin-query",
-                      value: event.target.value,
-                    })
-                  }
-                  placeholder="City or street address"
-                />
+            <div className="wizard-basics-step">
+              <div>
+                <label className="field-label" htmlFor="wizard-origin">Starting point</label>
+                <div className="address-field wizard-address-field">
+                  <span className="pin-mini" aria-hidden="true" />
+                  <input
+                    id="wizard-origin"
+                    value={state.originQuery}
+                    onChange={(event) =>
+                      dispatch({
+                        type: "set-origin-query",
+                        value: event.target.value,
+                      })
+                    }
+                    placeholder="City or street address"
+                  />
+                </div>
+                <p className="wizard-field-note">
+                  Recommendations still use the Issaquah demo dataset. Your answer is kept only in this open page.
+                </p>
               </div>
-              <p className="wizard-field-note">
-                Recommendations still use the Issaquah demo dataset. Your answer is kept only in this open page.
-              </p>
+
+              <fieldset className="wizard-fieldset wizard-children-fieldset">
+                <legend className="field-label">Family fit</legend>
+                <label className="logistics-option family-fit-option">
+                  <input
+                    type="checkbox"
+                    aria-label="Traveling with children"
+                    checked={state.travelingWithChildren}
+                    onChange={(event) =>
+                      dispatch({
+                        type: "set-traveling-with-children",
+                        value: event.target.checked,
+                      })
+                    }
+                  />
+                  <span>
+                    <strong>Traveling with children</strong>
+                    <small>Use family-friendly fit when ranking destinations</small>
+                  </span>
+                </label>
+              </fieldset>
             </div>
           )}
 
@@ -184,63 +214,7 @@ export function PlannerWizard({
           )}
 
           {stepIndex === 2 && (
-            <div className="wizard-party-grid">
-              <div className="wizard-counter">
-                <div>
-                  <strong>{state.adults}</strong>
-                  <span>Adults</span>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    aria-label="Remove one adult"
-                    disabled={state.adults === PLANNER_LIMITS.adults.min}
-                    onClick={() => dispatch({ type: "set-adults", value: state.adults - 1 })}
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Add one adult"
-                    disabled={state.adults === PLANNER_LIMITS.adults.max}
-                    onClick={() => dispatch({ type: "set-adults", value: state.adults + 1 })}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <div className="wizard-counter">
-                <div>
-                  <strong>{state.children}</strong>
-                  <span>Children</span>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    aria-label="Remove one child"
-                    disabled={state.children === PLANNER_LIMITS.children.min}
-                    onClick={() => dispatch({ type: "set-children", value: state.children - 1 })}
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Add one child"
-                    disabled={state.children === PLANNER_LIMITS.children.max}
-                    onClick={() => dispatch({ type: "set-children", value: state.children + 1 })}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-              <p>
-                Age-specific planning is intentionally deferred. For now, children affect family-fit ranking as one group.
-              </p>
-            </div>
-          )}
-
-          {stepIndex === 3 && (
-            <div className="wizard-priorities-step">
+            <div className="wizard-interests-step">
               <fieldset className="wizard-fieldset">
                 <legend className="field-label">Experiences</legend>
                 <div className="wizard-preference-list">
@@ -267,9 +241,13 @@ export function PlannerWizard({
                   })}
                 </div>
               </fieldset>
+            </div>
+          )}
 
+          {stepIndex === 3 && (
+            <div className="wizard-boundaries-step">
               <fieldset className="wizard-fieldset">
-                <legend className="field-label">Route logistics</legend>
+                <legend className="field-label">Shortlist boundaries</legend>
                 <div className="wizard-logistics-grid">
                   <label>
                     <input
@@ -317,7 +295,7 @@ export function PlannerWizard({
         </div>
 
         <div className="wizard-footer">
-          <button className="wizard-reset" type="button" onClick={resetWizard}>
+          <button className="wizard-secondary-button" type="button" onClick={resetWizard}>
             Reset answers
           </button>
           <div className="wizard-actions">
@@ -328,11 +306,6 @@ export function PlannerWizard({
                 onClick={() => setStepIndex((current) => current - 1)}
               >
                 Back
-              </button>
-            )}
-            {!isLastStep && (
-              <button className="wizard-secondary-button" type="button" onClick={goForward}>
-                Skip for now
               </button>
             )}
             <button className="wizard-primary-button" type="submit">

@@ -13,7 +13,7 @@ const DRIVE_TIME_ESTIMATE_TOLERANCE_HOURS = 0.15;
 export const SCORE_WEIGHTS = {
   experience: 30,
   driveTime: 25,
-  groupFit: 20,
+  familyFit: 20,
   weatherBackup: 15,
   logistics: 10,
 } as const;
@@ -94,28 +94,28 @@ function buildScoreBreakdown(
           : "caution",
   };
 
-  const groupScore =
-    criteria.children > 0
+  const familyScore =
+    criteria.travelingWithChildren
       ? clampScore(
-          (destination.familyFit / 10) * SCORE_WEIGHTS.groupFit,
-          SCORE_WEIGHTS.groupFit,
+          (destination.familyFit / 10) * SCORE_WEIGHTS.familyFit,
+          SCORE_WEIGHTS.familyFit,
         )
-      : Math.round(SCORE_WEIGHTS.groupFit * 0.6);
-  const groupFactor: ScoreFactor = {
-    id: "group-fit",
-    label: "Group fit",
-    score: groupScore,
-    maxScore: SCORE_WEIGHTS.groupFit,
+      : Math.round(SCORE_WEIGHTS.familyFit * 0.6);
+  const familyFactor: ScoreFactor = {
+    id: "family-fit",
+    label: "Family fit",
+    score: familyScore,
+    maxScore: SCORE_WEIGHTS.familyFit,
     summary:
-      criteria.children === 0
-        ? "Family-specific fit is neutral for this group."
+      !criteria.travelingWithChildren
+        ? "Family-specific fit is neutral when traveling without children."
         : destination.familyFit >= 8
           ? "Strong fit for a trip with children."
           : destination.familyFit >= 6
             ? "Practical fit for a trip with children."
             : "Family fit is weaker than the leading options.",
     sentiment:
-      criteria.children === 0
+      !criteria.travelingWithChildren
         ? "neutral"
         : destination.familyFit >= 8
           ? "strength"
@@ -171,7 +171,7 @@ function buildScoreBreakdown(
   return [
     experienceFactor,
     driveFactor,
-    groupFactor,
+    familyFactor,
     weatherFactor,
     logisticsFactor,
   ];
