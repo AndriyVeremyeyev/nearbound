@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useReducer, useState } from "react";
+import { FormEvent, useEffect, useMemo, useReducer, useState } from "react";
 import type { CSSProperties } from "react";
 
 import {
@@ -10,6 +10,11 @@ import {
   toTripCriteria,
 } from "@/lib/trips/planner-state";
 import { recommendDestinations } from "@/lib/trips/recommend";
+import {
+  clearPlannerSearch,
+  readPlannerStateFromSearch,
+  writePlannerSearch,
+} from "@/lib/trips/planner-url-state";
 import type {
   DestinationCatalog,
   ExcludedDestination,
@@ -20,6 +25,7 @@ import { PlannerWizard } from "./planner-wizard";
 
 type TripPlannerProps = {
   catalog: DestinationCatalog;
+  initialSearch?: string;
 };
 
 const prototypeMapPositions: Record<string, CSSProperties> = {
@@ -88,16 +94,25 @@ function formatExclusionSummary(exclusions: readonly ExcludedDestination[]) {
     .join(" · ");
 }
 
-export function TripPlanner({ catalog }: TripPlannerProps) {
+function createPlannerStateFromInitialSearch(initialSearch: string) {
+  return readPlannerStateFromSearch(initialSearch) ?? createInitialPlannerState();
+}
+
+export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
   const { destinations, preferenceOptions } = catalog;
   const [plannerState, dispatch] = useReducer(
     plannerReducer,
-    undefined,
-    createInitialPlannerState,
+    initialSearch,
+    createPlannerStateFromInitialSearch,
   );
   const [selectedId, setSelectedId] = useState("point-defiance");
   const [searchCount, setSearchCount] = useState(0);
-  const [showWizard, setShowWizard] = useState(true);
+  const [showWizard, setShowWizard] = useState(
+    () => readPlannerStateFromSearch(initialSearch) === null,
+  );
+  const [hasShareableState, setHasShareableState] = useState(
+    () => readPlannerStateFromSearch(initialSearch) !== null,
+  );
   const {
     originQuery: address,
     maxDriveHours: radius,
@@ -122,6 +137,17 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
   const selected = ranked.find((destination) => destination.id === selectedId) ?? topResults[0];
   const exclusionSummary = formatExclusionSummary(exclusions);
 
+  useEffect(() => {
+    if (!hasShareableState) return;
+
+    const search = writePlannerSearch(plannerState, window.location.search);
+    const url = `${window.location.pathname}?${search}${window.location.hash}`;
+
+    if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== url) {
+      window.history.replaceState(null, "", url);
+    }
+  }, [hasShareableState, plannerState]);
+
   function togglePreference(preference: Preference) {
     dispatch({ type: "toggle-preference", preference });
   }
@@ -138,6 +164,19 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
     setSelectedId("point-defiance");
     setSearchCount(0);
     setShowWizard(true);
+    setHasShareableState(false);
+
+    const search = clearPlannerSearch(window.location.search);
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
+    );
+  }
+
+  function completeWizard() {
+    setHasShareableState(true);
+    setShowWizard(false);
   }
 
   const isIssaquah = /issaquah/i.test(address);
@@ -176,7 +215,7 @@ export function TripPlanner({ catalog }: TripPlannerProps) {
           state={plannerState}
           preferenceOptions={preferenceOptions}
           dispatch={dispatch}
-          onComplete={() => setShowWizard(false)}
+          onComplete={completeWizard}
         />
       ) : (
         <>
