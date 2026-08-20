@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull } from "drizzle-orm";
 
 import {
   destinationPreferences,
@@ -7,6 +7,8 @@ import {
   routeEstimates,
   sourceReferences,
   userDestinationHistory,
+  userSavedOrigins,
+  users,
 } from "@/db/schema";
 import { getDatabase } from "@/lib/db/client";
 import type { Destination, DestinationCatalog, SourceReference } from "./types";
@@ -176,4 +178,94 @@ export async function loadVisitedDestinationIds(userId: string) {
     .from(userDestinationHistory)
     .where(eq(userDestinationHistory.userId, userId))
     .then((rows) => rows.map((row) => row.destinationId));
+}
+
+export type UserProfile = {
+  firstName: string | null;
+  lastName: string | null;
+};
+
+export async function loadUserProfile(userId: string): Promise<UserProfile> {
+  const [profile] = await getDatabase()
+    .select({ firstName: users.firstName, lastName: users.lastName })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  return profile ?? { firstName: null, lastName: null };
+}
+
+export type SavedOrigin = {
+  id: string;
+  label: string;
+  addressInput: string;
+  streetAddress: string | null;
+  city: string | null;
+  regionCode: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+};
+
+export async function loadSavedOrigins(userId: string): Promise<SavedOrigin[]> {
+  return getDatabase()
+    .select({
+      id: userSavedOrigins.id,
+      label: userSavedOrigins.label,
+      addressInput: userSavedOrigins.addressInput,
+      streetAddress: userSavedOrigins.streetAddress,
+      city: userSavedOrigins.city,
+      regionCode: userSavedOrigins.regionCode,
+      postalCode: userSavedOrigins.postalCode,
+      countryCode: userSavedOrigins.countryCode,
+    })
+    .from(userSavedOrigins)
+    .where(eq(userSavedOrigins.userId, userId))
+    .orderBy(asc(userSavedOrigins.createdAt));
+}
+
+export type VisitedPlace = {
+  destinationId: string;
+  name: string;
+  region: string;
+  summary: string;
+  visitedAt: string;
+  rating: number | null;
+  note: string | null;
+};
+
+export type DestinationVisit = {
+  rating: number | null;
+  note: string | null;
+};
+
+export async function loadDestinationVisit(
+  userId: string,
+  destinationId: string,
+): Promise<DestinationVisit | null> {
+  const [visit] = await getDatabase()
+    .select({ rating: userDestinationHistory.rating, note: userDestinationHistory.note })
+    .from(userDestinationHistory)
+    .where(and(
+      eq(userDestinationHistory.userId, userId),
+      eq(userDestinationHistory.destinationId, destinationId),
+    ));
+
+  return visit ?? null;
+}
+
+export async function loadVisitedPlaces(userId: string): Promise<VisitedPlace[]> {
+  return getDatabase()
+    .select({
+      destinationId: userDestinationHistory.destinationId,
+      name: destinationsTable.name,
+      region: destinationsTable.region,
+      summary: destinationsTable.summary,
+      visitedAt: userDestinationHistory.visitedAt,
+      rating: userDestinationHistory.rating,
+      note: userDestinationHistory.note,
+    })
+    .from(userDestinationHistory)
+    .innerJoin(destinationsTable, eq(destinationsTable.id, userDestinationHistory.destinationId))
+    .where(eq(userDestinationHistory.userId, userId))
+    .orderBy(desc(userDestinationHistory.visitedAt))
+    .then((rows) => rows.map((row) => ({ ...row, visitedAt: row.visitedAt.toISOString() })));
 }

@@ -84,6 +84,7 @@ describe("Nearbound concept prototype", () => {
       "/account",
     );
     expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
+    expect(screen.getByRole("heading", { name: /where should you go this weekend/i })).toBeInTheDocument();
 
     completeWizard();
 
@@ -103,10 +104,10 @@ describe("Nearbound concept prototype", () => {
     expect(
       screen.getByRole("link", { name: /point defiance zoo & aquarium/i }),
     ).toHaveAttribute("href", "https://www.pdza.org/");
-    expect(screen.getByText(/ranking updates as you go/i)).toBeInTheDocument();
+    expect(screen.getByText(/set the brief above, then select find my trips/i)).toBeInTheDocument();
   });
 
-  it("explains when route logistics remove the available destination", () => {
+  it("applies route-logistics changes only after the trip brief is submitted", async () => {
     const ferryCatalog: DestinationCatalog = {
       ...catalog,
       destinations: [
@@ -123,11 +124,15 @@ describe("Nearbound concept prototype", () => {
     completeWizard();
     fireEvent.click(screen.getByLabelText(/allow ferries/i));
 
-    expect(
+    expect(screen.getByRole("link", { name: "Open details for Ferry-only destination" })).toBeInTheDocument();
+    expect(screen.getByText("Changes are waiting to be applied.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+
+    await waitFor(() => expect(
       screen.getByRole("heading", {
         name: "No destination fits every active constraint.",
       }),
-    ).toBeInTheDocument();
+    ).toBeInTheDocument());
     expect(screen.getByText(/filtered: 1 ferry route/i)).toBeInTheDocument();
   });
 
@@ -262,10 +267,11 @@ describe("Nearbound concept prototype", () => {
         { method: "POST" },
       ),
     );
-    expect(screen.getByRole("button", { name: "Visited · undo" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Visited" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
+    expect(screen.getByRole("button", { name: "Visited" })).toBeDisabled();
     expect(window.location.search).not.toContain("destination");
   });
 

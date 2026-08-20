@@ -26,14 +26,17 @@ import type {
 } from "@/lib/trips/mapbox-routes";
 import type { ResolvedOrigin } from "@/lib/trips/mapbox-search";
 import type { CurrentUser } from "@/lib/auth-session";
+import type { SavedOrigin } from "@/lib/trips/repository";
 import { AccountMenu } from "./account-menu";
 import { OriginAutocomplete } from "./origin-autocomplete";
 import { PlannerWizard } from "./planner-wizard";
+import { SavedOriginSelector } from "./saved-origin-selector";
 
 type TripPlannerProps = {
   catalog: DestinationCatalog;
   currentUser?: CurrentUser | null;
   initialVisitedDestinationIds?: readonly string[];
+  savedOrigins?: readonly SavedOrigin[];
   initialSearch?: string;
 };
 
@@ -128,6 +131,7 @@ export function TripPlanner({
   catalog,
   currentUser = null,
   initialVisitedDestinationIds = [],
+  savedOrigins = [],
   initialSearch = "",
 }: TripPlannerProps) {
   const { destinations, preferenceOptions } = catalog;
@@ -135,6 +139,9 @@ export function TripPlanner({
     plannerReducer,
     initialSearch,
     createPlannerStateFromInitialSearch,
+  );
+  const [appliedPlannerState, setAppliedPlannerState] = useState(
+    () => createPlannerStateFromInitialSearch(initialSearch),
   );
   const [selectedId, setSelectedId] = useState("point-defiance");
   const [visitedDestinationIds, setVisitedDestinationIds] = useState(initialVisitedDestinationIds);
@@ -160,10 +167,13 @@ export function TripPlanner({
     allowBorderCrossings,
     hideVisited,
   } = plannerState;
+  const appliedDriveHours = appliedPlannerState.maxDriveHours;
+  const appliedOriginQuery = appliedPlannerState.originQuery.trim();
+  const hasPendingChanges = JSON.stringify(plannerState) !== JSON.stringify(appliedPlannerState);
 
   const currentOriginQuery = address.trim();
   const liveRouteResult =
-    liveRouteState?.originQuery === currentOriginQuery
+    liveRouteState?.originQuery === appliedOriginQuery
       ? liveRouteState.result
       : null;
   const liveRoutesByDestinationId = useMemo(
@@ -191,21 +201,21 @@ export function TripPlanner({
     () =>
       recommendDestinations(
         destinationsWithCurrentRoutes,
-        toTripCriteria(plannerState, visitedDestinationIds),
+        toTripCriteria(appliedPlannerState, visitedDestinationIds),
       ),
-    [destinationsWithCurrentRoutes, plannerState, visitedDestinationIds],
+    [destinationsWithCurrentRoutes, appliedPlannerState, visitedDestinationIds],
   );
 
   const topResults = ranked.slice(0, 5);
   const selected = ranked.find((destination) => destination.id === selectedId) ?? topResults[0];
   const exclusionSummary = formatExclusionSummary(exclusions);
-  const isIssaquah = /issaquah/i.test(address);
+  const isAppliedIssaquah = /issaquah/i.test(appliedOriginQuery);
   const mapOriginLabel = liveRouteResult
     ? liveRouteResult.originLabel.split(",")[0]
-    : isIssaquah
+    : isAppliedIssaquah
       ? "Issaquah"
       : "Your start";
-  const plannerSearch = hasShareableState ? writePlannerSearch(plannerState) : "";
+  const plannerSearch = hasShareableState ? writePlannerSearch(appliedPlannerState) : "";
 
   function destinationHref(destinationId: string) {
     return `/destinations/${destinationId}${plannerSearch ? `?${plannerSearch}` : ""}`;
@@ -218,13 +228,13 @@ export function TripPlanner({
   useEffect(() => {
     if (!hasShareableState) return;
 
-    const search = writePlannerSearch(plannerState, window.location.search);
+    const search = writePlannerSearch(appliedPlannerState, window.location.search);
     const url = `${window.location.pathname}?${search}${window.location.hash}`;
 
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== url) {
       window.history.replaceState(null, "", url);
     }
-  }, [hasShareableState, plannerState]);
+  }, [appliedPlannerState, hasShareableState]);
 
   function togglePreference(preference: Preference) {
     dispatch({ type: "toggle-preference", preference });
@@ -239,6 +249,7 @@ export function TripPlanner({
       return;
     }
 
+    setAppliedPlannerState(plannerState);
     setRouteStatus("loading");
     setRouteError(null);
     setLiveRouteState(null);
@@ -271,6 +282,7 @@ export function TripPlanner({
 
   function restartPlanner() {
     dispatch({ type: "reset" });
+    setAppliedPlannerState(createInitialPlannerState());
     setSelectedId("point-defiance");
     setSearchCount(0);
     setConfirmedOrigin(defaultOrigin);
@@ -287,20 +299,27 @@ export function TripPlanner({
   }
 
   function completeWizard() {
+    setAppliedPlannerState(plannerState);
     setHasShareableState(true);
     setShowWizard(false);
   }
 
-  async function toggleVisitedDestination(destinationId: string, isVisited: boolean) {
+  function selectSavedOrigin(origin: ResolvedOrigin) {
+    dispatch({ type: "set-origin-query", value: origin.label });
+    setConfirmedOrigin(origin);
+    setConfirmedOriginQuery(origin.label);
+    setRouteStatus("idle");
+    setRouteError(null);
+  }
+
+  async function markVisitedDestination(destinationId: string) {
     const response = await fetch(`/api/visited-destinations/${destinationId}`, {
-      method: isVisited ? "DELETE" : "POST",
+      method: "POST",
     });
     if (!response.ok) return;
 
     setVisitedDestinationIds((current) =>
-      isVisited
-        ? current.filter((id) => id !== destinationId)
-        : [...current, destinationId],
+      current.includes(destinationId) ? current : [...current, destinationId],
     );
   }
 
@@ -323,7 +342,7 @@ export function TripPlanner({
       <section className="hero" id="top">
         <div className="hero-copy">
           <p className="eyebrow">A smarter way to choose a short trip</p>
-          <h1>Find somewhere that fits your <em>actual</em> family.</h1>
+          <h1>Where should you go this <em>weekend?</em></h1>
           <p className="hero-intro">
             Start with the constraints that usually ruin a weekend—drive time, naps, weather, and logistics.
             Then match the destination.
@@ -349,6 +368,8 @@ export function TripPlanner({
             setConfirmedOrigin(origin);
             setConfirmedOriginQuery(origin.label);
           }}
+          savedOrigins={savedOrigins}
+          onSavedOriginSelect={selectSavedOrigin}
           onComplete={completeWizard}
         />
       ) : (
@@ -369,6 +390,7 @@ export function TripPlanner({
           </div>
 
           <label className="field-label" htmlFor="address">Starting point</label>
+          <SavedOriginSelector origins={savedOrigins} onSelect={selectSavedOrigin} />
           <OriginAutocomplete
             id="address"
             value={address}
@@ -377,23 +399,24 @@ export function TripPlanner({
               setConfirmedOriginQuery("");
               setRouteStatus("idle");
               setRouteError(null);
-              setLiveRouteState(null);
             }}
             onSelect={(origin) => {
               setConfirmedOrigin(origin);
               setConfirmedOriginQuery(origin.label);
             }}
           />
-          <p className={`demo-note ${routeStatus === "error" || !isIssaquah ? "is-warning" : ""}`}>
+          <p className={`demo-note ${routeStatus === "error" || !isAppliedIssaquah ? "is-warning" : ""}`}>
             {routeStatus === "loading"
               ? "Checking live drive times with Mapbox…"
-              : liveRouteResult
-                ? `Live drive times from ${liveRouteResult.originLabel}. Ferry and border filters still use curated route metadata.`
-                : routeStatus === "error"
-                  ? `${routeError} Showing curated Issaquah drive-time estimates.`
-                  : isIssaquah
-                    ? "Select Find my trips to replace the Issaquah baseline with live drive times."
-                    : "Choose a suggestion to confirm the starting point before calculating live drive times."}
+              : routeStatus === "error"
+                ? `${routeError} Showing the previously applied results.`
+                : hasPendingChanges
+                  ? "Your changes will apply when you select Find my trips."
+                  : liveRouteResult
+                    ? `Live drive times from ${liveRouteResult.originLabel}. Ferry and border filters still use curated route metadata.`
+                    : isAppliedIssaquah
+                      ? "Select Find my trips to replace the Issaquah baseline with live drive times."
+                      : "Choose a suggestion to confirm the starting point before calculating live drive times."}
           </p>
 
           <div className="form-row">
@@ -542,10 +565,10 @@ export function TripPlanner({
         <div className="map-card">
           <div className="map-topline">
             <div>
-              <span className="map-kicker">{liveRouteResult ? "Live driving times" : "Your search area"}</span>
+              <span className="map-kicker">{hasPendingChanges ? "Current results" : liveRouteResult ? "Live driving times" : "Your search area"}</span>
               <strong>{topResults.length} strong matches near {mapOriginLabel}</strong>
             </div>
-            <span className="map-scale">≈ {radius.toFixed(1)}h drive</span>
+            <span className="map-scale">≈ {appliedDriveHours.toFixed(1)}h drive</span>
           </div>
 
           <div className="map-canvas" aria-label="Illustrative map of recommended destinations around your starting point">
@@ -554,7 +577,7 @@ export function TripPlanner({
             <div className="mountain-band" aria-hidden="true">CASCADE RANGE</div>
             <div className="road road-one" />
             <div className="road road-two" />
-            <div className="radius-ring" style={{ width: `${32 + radius * 8}%`, height: `${32 + radius * 8}%` }} />
+            <div className="radius-ring" style={{ width: `${32 + appliedDriveHours * 8}%`, height: `${32 + appliedDriveHours * 8}%` }} />
             <div className="home-pin" aria-label={`Starting point: ${mapOriginLabel}`}>
               <span />
               <small>{mapOriginLabel}</small>
@@ -677,16 +700,14 @@ export function TripPlanner({
                   className="visited-toggle"
                   type="button"
                   aria-pressed={visitedDestinationIds.includes(destination.id)}
+                  disabled={visitedDestinationIds.includes(destination.id)}
                   onClick={(event) => {
                     event.stopPropagation();
-                    void toggleVisitedDestination(
-                      destination.id,
-                      visitedDestinationIds.includes(destination.id),
-                    );
+                    void markVisitedDestination(destination.id);
                   }}
                 >
                   {visitedDestinationIds.includes(destination.id)
-                    ? "Visited · undo"
+                    ? "Visited"
                     : "Mark as visited"}
                 </button>
               )}
@@ -702,11 +723,13 @@ export function TripPlanner({
         <p className="search-status" aria-live="polite">
           {routeStatus === "loading"
             ? "Calculating live drive times…"
-            : liveRouteResult
-              ? `Live drive times calculated for ${liveRouteResult.originLabel} · search ${searchCount}`
-              : searchCount > 0
-                ? `Updated with curated fallback estimates · search ${searchCount}`
-                : "Adjust the brief above—the ranking updates as you go."}
+            : hasPendingChanges
+              ? "Changes are waiting to be applied."
+              : liveRouteResult
+                ? `Live drive times calculated for ${liveRouteResult.originLabel} · search ${searchCount}`
+                : searchCount > 0
+                  ? `Updated with curated fallback estimates · search ${searchCount}`
+                  : "Set the brief above, then select Find my trips."}
           {exclusionSummary && ` · Filtered: ${exclusionSummary}`}
         </p>
       </section>

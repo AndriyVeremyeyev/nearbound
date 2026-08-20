@@ -29,6 +29,27 @@
       "when": 1787248800000,
       "tag": "0003_visited_history",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787252400000,
+      "tag": "0004_trip_reflections",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787256000000,
+      "tag": "0005_profile_and_saved_origins",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787259600000,
+      "tag": "0006_structured_saved_origins",
+      "breakpoints": true
     }
   ]
 }

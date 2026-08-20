@@ -1,6 +1,7 @@
 import {
   findOriginSuggestions,
   isResolvedOrigin,
+  resolveSavedOriginQuery,
   retrieveOriginSuggestion,
 } from "./mapbox-search";
 
@@ -77,6 +78,33 @@ describe("Mapbox starting-point search", () => {
     });
 
     expect(String(fetcher.mock.calls[0][0])).toContain("searchbox/v1/retrieve/");
+  });
+
+  it("resolves a saved user-entered address only for the current trip", async () => {
+    const fetcher = jest.fn().mockResolvedValue(
+      jsonResponse({
+        features: [
+          {
+            geometry: { coordinates: [-122.3321, 47.6062] },
+            properties: { full_address: "123 Pine St, Seattle, Washington, United States" },
+          },
+        ],
+      }),
+    ) as jest.MockedFunction<typeof fetch>;
+
+    await expect(
+      resolveSavedOriginQuery({
+        accessToken: "pk.test-token",
+        query: "123 Pine St, Seattle, WA",
+        fetcher,
+      }),
+    ).resolves.toEqual({
+      label: "123 Pine St, Seattle, Washington, United States",
+      latitude: 47.6062,
+      longitude: -122.3321,
+    });
+
+    expect(String(fetcher.mock.calls[0][0])).toContain("searchbox/v1/forward");
   });
 
   it("only accepts valid resolved origins from the client", () => {

@@ -9,7 +9,9 @@ import {
 } from "@/lib/trips/planner-state";
 import type { PreferenceOption } from "@/lib/trips/types";
 import type { ResolvedOrigin } from "@/lib/trips/mapbox-search";
+import type { SavedOrigin } from "@/lib/trips/repository";
 import { OriginAutocomplete } from "./origin-autocomplete";
+import { SavedOriginSelector } from "./saved-origin-selector";
 
 type PlannerWizardProps = {
   state: PlannerState;
@@ -17,6 +19,8 @@ type PlannerWizardProps = {
   dispatch: (action: PlannerAction) => void;
   onOriginChange: (value: string) => void;
   onOriginSelect: (origin: ResolvedOrigin) => void;
+  savedOrigins: readonly SavedOrigin[];
+  onSavedOriginSelect: (origin: ResolvedOrigin) => void;
   onComplete: () => void;
 };
 
@@ -60,6 +64,8 @@ export function PlannerWizard({
   dispatch,
   onOriginChange,
   onOriginSelect,
+  savedOrigins,
+  onSavedOriginSelect,
   onComplete,
 }: PlannerWizardProps) {
   const [stepIndex, setStepIndex] = useState(0);
@@ -128,6 +134,7 @@ export function PlannerWizard({
             <div className="wizard-basics-step">
               <div>
                 <label className="field-label" htmlFor="wizard-origin">Starting point</label>
+                <SavedOriginSelector origins={savedOrigins} onSelect={onSavedOriginSelect} />
                 <OriginAutocomplete
                   id="wizard-origin"
                   value={state.originQuery}
@@ -137,7 +144,7 @@ export function PlannerWizard({
                   showGuidance={false}
                 />
                 <p className="wizard-field-note">
-                  Choose a suggestion to confirm your starting point. It stays only in this open page.
+                  Use a saved point or choose a suggestion. The current route result stays only in this open page.
                 </p>
               </div>
 

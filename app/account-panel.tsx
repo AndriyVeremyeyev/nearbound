@@ -59,8 +59,8 @@ export function AccountPanel({ currentUser }: AccountPanelProps) {
         <p className="eyebrow">Account ready</p>
         <h1>Welcome back, {currentUser.name}.</h1>
         <p>
-          You are signed in as <strong>{currentUser.email}</strong>. Saved places
-          and preferences arrive in the next product step.
+          You are signed in as <strong>{currentUser.email}</strong>. Keep a light
+          record of places you have visited below.
         </p>
         <div className="account-actions">
           <Link className="account-primary-action" href="/">Plan a trip <span aria-hidden="true">→</span></Link>

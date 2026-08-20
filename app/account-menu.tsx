@@ -27,7 +27,7 @@ export function AccountMenu({ currentUser }: AccountMenuProps) {
 
   return (
     <div className="account-menu">
-      <span title={currentUser.email}>{currentUser.name}</span>
+      <Link href="/account" title={currentUser.email}>{currentUser.name}</Link>
       <button type="button" onClick={signOut} disabled={isSigningOut}>
         {isSigningOut ? "Signing out…" : "Sign out"}
       </button>

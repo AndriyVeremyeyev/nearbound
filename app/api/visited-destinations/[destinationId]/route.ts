@@ -37,3 +37,29 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   );
   return NextResponse.json({ destinationId, status: "removed" });
 }
+
+export async function PATCH(request: Request, { params }: RouteContext) {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "Sign in to update visited places." }, { status: 401 });
+
+  const body = await request.json() as { rating?: unknown; note?: unknown };
+  const rating = body.rating === null ? null : body.rating;
+  const note = body.note === null ? null : body.note;
+  if (rating !== undefined && rating !== null && (typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 5)) {
+    return NextResponse.json({ error: "Rating must be between 1 and 5." }, { status: 400 });
+  }
+  if (note !== undefined && note !== null && (typeof note !== "string" || note.length > 1000)) {
+    return NextResponse.json({ error: "Note must be 1,000 characters or fewer." }, { status: 400 });
+  }
+
+  const { destinationId } = await params;
+  const update: { rating?: number | null; note?: string | null; updatedAt: Date } = { updatedAt: new Date() };
+  if (rating !== undefined) update.rating = rating as number | null;
+  if (note !== undefined) update.note = typeof note === "string" ? note.trim() || null : note;
+
+  const [history] = await getDatabase().update(userDestinationHistory).set(update).where(
+    and(eq(userDestinationHistory.userId, user.id), eq(userDestinationHistory.destinationId, destinationId)),
+  ).returning({ destinationId: userDestinationHistory.destinationId, rating: userDestinationHistory.rating, note: userDestinationHistory.note });
+  if (!history) return NextResponse.json({ error: "Mark this place as visited first." }, { status: 404 });
+  return NextResponse.json(history);
+}

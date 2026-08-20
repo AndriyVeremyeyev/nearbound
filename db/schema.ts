@@ -16,6 +16,8 @@ import {
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
@@ -26,6 +28,30 @@ export const users = pgTable("users", {
     .notNull()
     .defaultNow(),
 });
+
+export const userSavedOrigins = pgTable(
+  "user_saved_origins",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    addressInput: text("address_input").notNull(),
+    streetAddress: text("street_address"),
+    city: text("city"),
+    regionCode: text("region_code"),
+    postalCode: text("postal_code"),
+    countryCode: text("country_code"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("user_saved_origins_user_id_idx").on(table.userId)],
+);
 
 export const authSessions = pgTable(
   "auth_sessions",
@@ -114,10 +140,15 @@ export const userDestinationHistory = pgTable(
       .notNull()
       .references(() => destinations.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("visited"),
+    rating: integer("rating"),
+    note: text("note"),
     visitedAt: timestamp("visited_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
@@ -125,6 +156,7 @@ export const userDestinationHistory = pgTable(
     primaryKey({ columns: [table.userId, table.destinationId] }),
     index("user_destination_history_destination_id_idx").on(table.destinationId),
     check("user_destination_history_status_check", sql`${table.status} = 'visited'`),
+    check("user_destination_history_rating_check", sql`${table.rating} between 1 and 5`),
   ],
 );
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth-session";
-import { loadDestinationById } from "@/lib/trips/repository";
+import { loadDestinationById, loadDestinationVisit } from "@/lib/trips/repository";
 import {
   readPlannerStateFromSearch,
   writePlannerSearch,
@@ -43,6 +43,9 @@ export default async function DestinationPage({ params, searchParams }: Destinat
     getCurrentUser(),
   ]);
   if (!destination) notFound();
+  const visit = currentUser
+    ? await loadDestinationVisit(currentUser.id, destination.id)
+    : null;
 
   const sharedPlannerState = readPlannerStateFromSearch(toSearchString(await searchParams));
   const plannerSearch = sharedPlannerState ? writePlannerSearch(sharedPlannerState) : "";
@@ -85,6 +88,15 @@ export default async function DestinationPage({ params, searchParams }: Destinat
         </aside>
 
         <div className="detail-story">
+          {visit && (
+            <section className="detail-visit">
+              <p className="eyebrow">Your visit</p>
+              <h2>Visited</h2>
+              {visit.rating !== null && <strong>{visit.rating} / 5</strong>}
+              {visit.note ? <p>{visit.note}</p> : <p>Add a rating or short note while the trip is still fresh.</p>}
+              <Link href={`/account#visited-${destination.id}`}>Edit in account →</Link>
+            </section>
+          )}
           <section>
             <p className="eyebrow">The anchor</p>
             <h2>One strong plan, not a packed itinerary.</h2>

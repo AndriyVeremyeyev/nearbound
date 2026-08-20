@@ -30,6 +30,17 @@ type MapboxRetrieveResponse = {
   }>;
 };
 
+type MapboxForwardResponse = {
+  features?: Array<{
+    geometry?: { coordinates?: unknown[] };
+    properties?: {
+      name?: string;
+      full_address?: string;
+      place_formatted?: string;
+    };
+  }>;
+};
+
 export class MapboxSearchError extends Error {
   constructor(message: string, readonly status: number) {
     super(message);
@@ -140,6 +151,53 @@ export async function retrieveOriginSuggestion({
     longitude > 180
   ) {
     throw new MapboxSearchError("Mapbox did not return a usable starting point.", 502);
+  }
+
+  return { label, latitude, longitude };
+}
+
+export async function resolveSavedOriginQuery({
+  accessToken,
+  query,
+  fetcher = fetch,
+}: {
+  accessToken: string;
+  query: string;
+  fetcher?: typeof fetch;
+}): Promise<ResolvedOrigin> {
+  const trimmedQuery = query.trim();
+  assertQuery(trimmedQuery);
+
+  const url = new URL("https://api.mapbox.com/search/searchbox/v1/forward");
+  url.searchParams.set("q", trimmedQuery);
+  url.searchParams.set("country", "US,CA");
+  url.searchParams.set("types", "address,place,locality,neighborhood");
+  url.searchParams.set("proximity", "-122.3321,47.6062");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("access_token", accessToken);
+
+  const response = await fetcher(url);
+  if (!response.ok) {
+    throw new MapboxSearchError("Mapbox could not confirm that saved starting point.", 502);
+  }
+
+  const payload = (await readJson(response)) as MapboxForwardResponse;
+  const feature = payload.features?.[0];
+  const [longitude, latitude] = feature?.geometry?.coordinates ?? [];
+  const label = feature?.properties?.full_address
+    ?? feature?.properties?.place_formatted
+    ?? feature?.properties?.name;
+
+  if (
+    !label
+    || typeof latitude !== "number"
+    || typeof longitude !== "number"
+    || latitude < -90
+    || latitude > 90
+    || longitude < -180
+    || longitude > 180
+  ) {
+    throw new MapboxSearchError("Mapbox could not resolve that saved starting point.", 404);
   }
 
   return { label, latitude, longitude };
