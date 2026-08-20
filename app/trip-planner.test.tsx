@@ -84,6 +84,9 @@ describe("Nearbound concept prototype", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("trip match")).toBeInTheDocument();
     expect(
+      screen.getByRole("link", { name: "Open details for Point Defiance" }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("link", { name: /point defiance zoo & aquarium/i }),
     ).toHaveAttribute("href", "https://www.pdza.org/");
     expect(screen.getByText(/ranking updates as you go/i)).toBeInTheDocument();

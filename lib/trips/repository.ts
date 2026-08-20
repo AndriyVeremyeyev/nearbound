@@ -161,3 +161,8 @@ export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
     preferenceOptions,
   };
 }
+
+export async function loadDestinationById(destinationId: string) {
+  const catalog = await loadDestinationCatalog();
+  return catalog.destinations.find((destination) => destination.id === destinationId) ?? null;
+}

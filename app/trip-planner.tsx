@@ -197,6 +197,15 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
     : isIssaquah
       ? "Issaquah"
       : "Your start";
+  const plannerSearch = hasShareableState ? writePlannerSearch(plannerState) : "";
+
+  function destinationHref(destinationId: string) {
+    return `/destinations/${destinationId}${plannerSearch ? `?${plannerSearch}` : ""}`;
+  }
+
+  function openDestination(destinationId: string) {
+    window.location.assign(destinationHref(destinationId));
+  }
 
   useEffect(() => {
     if (!hasShareableState) return;
@@ -552,8 +561,8 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
                 <h2>{selected.name}</h2>
                 <span>{selected.summary}</span>
               </div>
-              <button type="button" onClick={() => document.getElementById(`result-${selected.id}`)?.scrollIntoView({ behavior: "smooth" })}>
-                View plan <span aria-hidden="true">↓</span>
+              <button type="button" onClick={() => openDestination(selected.id)}>
+                View details <span aria-hidden="true">→</span>
               </button>
             </article>
           )}
@@ -579,6 +588,20 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
               id={`result-${destination.id}`}
               key={destination.id}
               onMouseEnter={() => setSelectedId(destination.id)}
+              onClick={(event) => {
+                if (event.target instanceof Element && event.target.closest("a")) return;
+                openDestination(destination.id);
+              }}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget) return;
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  openDestination(destination.id);
+                }
+              }}
+              role="link"
+              tabIndex={0}
+              aria-label={`Open details for ${destination.name}`}
             >
               <div className="result-rank">0{index + 1}</div>
               <div className="result-title-row">

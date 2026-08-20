@@ -26,6 +26,7 @@ The existing concept spike includes:
 - traveling-with-children, trip length, and experience filters;
 - a deterministic ranking over 18 curated destinations;
 - visible reasons, cautions, and stay suggestions;
+- click-through destination detail pages with trip context and source links;
 - a single workspace where the same answers and results can be changed without restarting the setup;
 - a stylized map used to test the visual direction.
 
@@ -34,6 +35,7 @@ Important limitations:
 - when a `MAPBOX_ACCESS_TOKEN` is configured locally, the starting point uses temporary Mapbox autocomplete and the selected place drives live Mapbox drive-time estimates for the current session;
 - ferry and border filters still use curated route metadata, rather than live route analysis;
 - the map is illustrative, not geographic;
+- live route time stays in the planner and is not carried onto detail pages, because the selected starting point is temporary;
 - schedules, weather, lodging availability, and prices are not live;
 - the dataset is a product-research seed, not comprehensive travel advice.
 
