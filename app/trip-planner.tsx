@@ -33,6 +33,7 @@ import { PlannerWizard } from "./planner-wizard";
 type TripPlannerProps = {
   catalog: DestinationCatalog;
   currentUser?: CurrentUser | null;
+  initialVisitedDestinationIds?: readonly string[];
   initialSearch?: string;
 };
 
@@ -56,8 +57,6 @@ const prototypeMapPositions: Record<string, CSSProperties> = {
   "lake-chelan": { left: "91%", top: "36%" },
   anacortes: { left: "42%", top: "11%" },
 };
-
-const prototypeVisitedDestinationIds = ["sequim", "long-beach"];
 
 const dayOptions = [
   { value: 1, label: "Day trip" },
@@ -128,6 +127,7 @@ const defaultOrigin: ResolvedOrigin = {
 export function TripPlanner({
   catalog,
   currentUser = null,
+  initialVisitedDestinationIds = [],
   initialSearch = "",
 }: TripPlannerProps) {
   const { destinations, preferenceOptions } = catalog;
@@ -137,6 +137,7 @@ export function TripPlanner({
     createPlannerStateFromInitialSearch,
   );
   const [selectedId, setSelectedId] = useState("point-defiance");
+  const [visitedDestinationIds, setVisitedDestinationIds] = useState(initialVisitedDestinationIds);
   const [searchCount, setSearchCount] = useState(0);
   const [showWizard, setShowWizard] = useState(
     () => readPlannerStateFromSearch(initialSearch) === null,
@@ -190,9 +191,9 @@ export function TripPlanner({
     () =>
       recommendDestinations(
         destinationsWithCurrentRoutes,
-        toTripCriteria(plannerState, prototypeVisitedDestinationIds),
+        toTripCriteria(plannerState, visitedDestinationIds),
       ),
-    [destinationsWithCurrentRoutes, plannerState],
+    [destinationsWithCurrentRoutes, plannerState, visitedDestinationIds],
   );
 
   const topResults = ranked.slice(0, 5);
@@ -288,6 +289,19 @@ export function TripPlanner({
   function completeWizard() {
     setHasShareableState(true);
     setShowWizard(false);
+  }
+
+  async function toggleVisitedDestination(destinationId: string, isVisited: boolean) {
+    const response = await fetch(`/api/visited-destinations/${destinationId}`, {
+      method: isVisited ? "DELETE" : "POST",
+    });
+    if (!response.ok) return;
+
+    setVisitedDestinationIds((current) =>
+      isVisited
+        ? current.filter((id) => id !== destinationId)
+        : [...current, destinationId],
+    );
   }
 
   return (
@@ -507,6 +521,7 @@ export function TripPlanner({
           <label className="check-row">
             <input
               type="checkbox"
+              disabled={!currentUser}
               checked={hideVisited}
               onChange={(event) =>
                 dispatch({
@@ -515,7 +530,7 @@ export function TripPlanner({
                 })
               }
             />
-            <span>Hide places we’ve already visited</span>
+            <span>{currentUser ? "Hide places we’ve already visited" : "Sign in to hide visited places"}</span>
           </label>
 
           <button className="primary-button" type="submit" disabled={routeStatus === "loading"}>
@@ -657,6 +672,24 @@ export function TripPlanner({
                   </div>
                 )}
               </div>
+              {currentUser && (
+                <button
+                  className="visited-toggle"
+                  type="button"
+                  aria-pressed={visitedDestinationIds.includes(destination.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void toggleVisitedDestination(
+                      destination.id,
+                      visitedDestinationIds.includes(destination.id),
+                    );
+                  }}
+                >
+                  {visitedDestinationIds.includes(destination.id)
+                    ? "Visited · undo"
+                    : "Mark as visited"}
+                </button>
+              )}
             </article>
           ))}
         </div>

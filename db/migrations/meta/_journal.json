@@ -22,6 +22,13 @@
       "when": 1787245200000,
       "tag": "0002_optional_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787248800000,
+      "tag": "0003_visited_history",
+      "breakpoints": true
     }
   ]
 }

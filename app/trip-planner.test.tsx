@@ -237,6 +237,38 @@ describe("Nearbound concept prototype", () => {
     expect(screen.getByRole("heading", { name: "Tell us the trip basics" })).toBeInTheDocument();
   });
 
+  it("updates a signed-in user’s visited history without putting it in the shared URL", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true } as Response);
+    global.fetch = fetchMock as typeof fetch;
+    window.history.replaceState(
+      null,
+      "",
+      "/?days=2&drive=3&interests=animals%2Cocean&children=1&ferry=1&border=1&visited=0",
+    );
+
+    render(
+      <TripPlanner
+        catalog={catalog}
+        currentUser={{ id: "user-1", name: "Andriy", email: "andriy@example.com" }}
+        initialSearch={window.location.search}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark as visited" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/visited-destinations/point-defiance",
+        { method: "POST" },
+      ),
+    );
+    expect(screen.getByRole("button", { name: "Visited · undo" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(window.location.search).not.toContain("destination");
+  });
+
   it("uses the live route response after the user submits a trip brief", async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,

@@ -35,7 +35,7 @@ describe("Nearbound account panel", () => {
   it("shows the signed-in state without exposing private data in a share link", () => {
     render(
       <AccountPanel
-        currentUser={{ name: "Andriy", email: "andriy@example.com" }}
+        currentUser={{ id: "user-1", name: "Andriy", email: "andriy@example.com" }}
       />,
     );
 

@@ -6,6 +6,7 @@ import {
   preferences,
   routeEstimates,
   sourceReferences,
+  userDestinationHistory,
 } from "@/db/schema";
 import { getDatabase } from "@/lib/db/client";
 import type { Destination, DestinationCatalog, SourceReference } from "./types";
@@ -165,4 +166,14 @@ export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
 export async function loadDestinationById(destinationId: string) {
   const catalog = await loadDestinationCatalog();
   return catalog.destinations.find((destination) => destination.id === destinationId) ?? null;
+}
+
+export async function loadVisitedDestinationIds(userId: string) {
+  const database = getDatabase();
+
+  return database
+    .select({ destinationId: userDestinationHistory.destinationId })
+    .from(userDestinationHistory)
+    .where(eq(userDestinationHistory.userId, userId))
+    .then((rows) => rows.map((row) => row.destinationId));
 }

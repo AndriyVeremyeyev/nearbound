@@ -274,7 +274,7 @@ main { min-height: 100vh; overflow: hidden; }
 .results-heading h2 { margin: 0; font-size: clamp(46px, 5vw, 76px); line-height: .95; letter-spacing: -.06em; }
 .results-heading > p { margin: 0; color: var(--ink-soft); font-size: 16px; line-height: 1.55; }
 .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.result-card { position: relative; padding: 30px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,254,249,.62); cursor: pointer; transition: background .2s ease, border-color .2s ease, transform .2s ease; }
+.result-card { position: relative; display: flex; flex-direction: column; padding: 30px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,254,249,.62); cursor: pointer; transition: background .2s ease, border-color .2s ease, transform .2s ease; }
 .result-card.selected { border-color: rgba(29,122,113,.42); background: var(--white); }
 .result-card:hover { border-color: rgba(29,122,113,.42); background: var(--white); transform: translateY(-2px); }
 .result-rank { position: absolute; right: 25px; top: 24px; color: rgba(23,42,58,.18); font-family: Georgia, serif; font-size: 44px; font-style: italic; }
@@ -287,7 +287,7 @@ main { min-height: 100vh; overflow: hidden; }
 .result-summary { min-height: 88px; margin: 24px 0 18px; color: var(--ink-soft); font-size: 14px; line-height: 1.55; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 7px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 .tag-row span { padding: 6px 8px; border-radius: 5px; background: var(--teal-soft); color: var(--teal); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
-.micro-plan { padding-top: 18px; display: grid; gap: 14px; }
+.micro-plan { flex: 1; padding-top: 18px; display: grid; gap: 14px; }
 .micro-plan > div { display: grid; grid-template-columns: 106px 1fr; gap: 12px; }
 .micro-plan span { color: var(--ink); font-size: 9px; font-weight: 850; text-transform: uppercase; letter-spacing: .06em; }
 .micro-plan p { margin: 0; color: var(--ink-soft); font-size: 11px; line-height: 1.45; }
@@ -298,6 +298,8 @@ main { min-height: 100vh; overflow: hidden; }
 .micro-plan .source-reference { padding-top: 2px; }
 .source-reference a { width: fit-content; color: var(--teal); font-size: 11px; font-weight: 750; text-decoration: underline; text-decoration-color: rgba(29,122,113,.35); text-underline-offset: 3px; }
 .source-reference a:hover { color: var(--ink); text-decoration-color: currentColor; }
+.visited-toggle { width: 100%; margin-top: 20px; min-height: 38px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 10px; font-weight: 850; letter-spacing: .03em; text-transform: uppercase; transition: background .18s ease, border-color .18s ease, color .18s ease; }
+.visited-toggle:hover, .visited-toggle[aria-pressed="true"] { border-color: rgba(29,122,113,.42); background: var(--teal-soft); color: var(--teal); }
 .empty-state { padding: 48px; text-align: center; border: 1px solid var(--line); background: var(--white); }
 .empty-state h3 { margin: 0 0 8px; font-size: 26px; }
 .empty-state p { margin: 0; color: var(--ink-soft); }

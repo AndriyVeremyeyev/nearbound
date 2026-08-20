@@ -104,6 +104,30 @@ export const authVerifications = pgTable(
   ],
 );
 
+export const userDestinationHistory = pgTable(
+  "user_destination_history",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    destinationId: text("destination_id")
+      .notNull()
+      .references(() => destinations.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("visited"),
+    visitedAt: timestamp("visited_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.destinationId] }),
+    index("user_destination_history_destination_id_idx").on(table.destinationId),
+    check("user_destination_history_status_check", sql`${table.status} = 'visited'`),
+  ],
+);
+
 export const destinations = pgTable(
   "destinations",
   {

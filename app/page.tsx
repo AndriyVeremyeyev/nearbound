@@ -1,4 +1,4 @@
-import { loadDestinationCatalog } from "@/lib/trips/repository";
+import { loadDestinationCatalog, loadVisitedDestinationIds } from "@/lib/trips/repository";
 import { getCurrentUser } from "@/lib/auth-session";
 import { TripPlanner } from "./trip-planner";
 
@@ -27,12 +27,16 @@ export default async function Home({ searchParams }: HomeProps) {
     loadDestinationCatalog(),
     getCurrentUser(),
   ]);
+  const visitedDestinationIds = currentUser
+    ? await loadVisitedDestinationIds(currentUser.id)
+    : [];
   const initialSearch = toSearchString(await searchParams);
 
   return (
     <TripPlanner
       catalog={catalog}
       currentUser={currentUser}
+      initialVisitedDestinationIds={visitedDestinationIds}
       initialSearch={initialSearch}
     />
   );
