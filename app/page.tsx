@@ -1,4 +1,5 @@
 import { loadDestinationCatalog } from "@/lib/trips/repository";
+import { getCurrentUser } from "@/lib/auth-session";
 import { TripPlanner } from "./trip-planner";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,17 @@ function toSearchString(searchParams: Record<string, string | string[] | undefin
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const catalog = await loadDestinationCatalog();
+  const [catalog, currentUser] = await Promise.all([
+    loadDestinationCatalog(),
+    getCurrentUser(),
+  ]);
   const initialSearch = toSearchString(await searchParams);
 
-  return <TripPlanner catalog={catalog} initialSearch={initialSearch} />;
+  return (
+    <TripPlanner
+      catalog={catalog}
+      currentUser={currentUser}
+      initialSearch={initialSearch}
+    />
+  );
 }

@@ -3,6 +3,16 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { DestinationCatalog } from "@/lib/trips/types";
 import { TripPlanner } from "./trip-planner";
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }),
+}));
+
+jest.mock("../lib/auth-client", () => ({
+  authClient: {
+    signOut: jest.fn(),
+  },
+}));
+
 const originalFetch = global.fetch;
 
 const catalog: DestinationCatalog = {
@@ -69,6 +79,10 @@ describe("Nearbound concept prototype", () => {
     expect(
       screen.getByRole("heading", { name: "Tell us the trip basics" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "/account",
+    );
     expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
 
     completeWizard();

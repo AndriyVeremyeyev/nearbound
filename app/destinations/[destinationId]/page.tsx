@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { getCurrentUser } from "@/lib/auth-session";
 import { loadDestinationById } from "@/lib/trips/repository";
 import {
   readPlannerStateFromSearch,
   writePlannerSearch,
 } from "@/lib/trips/planner-url-state";
+import { AccountMenu } from "../../account-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +38,10 @@ function toSearchString(searchParams: Record<string, string | string[] | undefin
 
 export default async function DestinationPage({ params, searchParams }: DestinationPageProps) {
   const { destinationId } = await params;
-  const destination = await loadDestinationById(destinationId);
+  const [destination, currentUser] = await Promise.all([
+    loadDestinationById(destinationId),
+    getCurrentUser(),
+  ]);
   if (!destination) notFound();
 
   const sharedPlannerState = readPlannerStateFromSearch(toSearchString(await searchParams));
@@ -50,7 +55,10 @@ export default async function DestinationPage({ params, searchParams }: Destinat
           <span className="brand-mark" aria-hidden="true">N</span>
           <span>nearbound</span>
         </Link>
-        <Link className="detail-back" href={backHref}>← Back to matches</Link>
+        <div className="detail-nav">
+          <Link className="detail-back" href={backHref}>← Back to matches</Link>
+          <AccountMenu currentUser={currentUser} />
+        </div>
       </header>
 
       <section className="detail-hero">

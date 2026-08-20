@@ -25,11 +25,14 @@ import type {
   LiveRouteResult,
 } from "@/lib/trips/mapbox-routes";
 import type { ResolvedOrigin } from "@/lib/trips/mapbox-search";
+import type { CurrentUser } from "@/lib/auth-session";
+import { AccountMenu } from "./account-menu";
 import { OriginAutocomplete } from "./origin-autocomplete";
 import { PlannerWizard } from "./planner-wizard";
 
 type TripPlannerProps = {
   catalog: DestinationCatalog;
+  currentUser?: CurrentUser | null;
   initialSearch?: string;
 };
 
@@ -122,7 +125,11 @@ const defaultOrigin: ResolvedOrigin = {
   longitude: -122.0326,
 };
 
-export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
+export function TripPlanner({
+  catalog,
+  currentUser = null,
+  initialSearch = "",
+}: TripPlannerProps) {
   const { destinations, preferenceOptions } = catalog;
   const [plannerState, dispatch] = useReducer(
     plannerReducer,
@@ -290,9 +297,12 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
           <span className="brand-mark" aria-hidden="true">N</span>
           <span>nearbound</span>
         </a>
-        <div className="header-note">
-          <span className="status-dot" aria-hidden="true" />
-          Family travel prototype · Cascadia
+        <div className="header-actions">
+          <div className="header-note">
+            <span className="status-dot" aria-hidden="true" />
+            Family travel prototype · Cascadia
+          </div>
+          <AccountMenu currentUser={currentUser} />
         </div>
       </header>
 

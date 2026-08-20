@@ -27,6 +27,7 @@ The existing concept spike includes:
 - a deterministic ranking over 18 curated destinations;
 - visible reasons, cautions, and stay suggestions;
 - click-through destination detail pages with trip context and source links;
+- an optional email-and-password account with persistent sessions;
 - a single workspace where the same answers and results can be changed without restarting the setup;
 - a stylized map used to test the visual direction.
 
@@ -36,6 +37,8 @@ Important limitations:
 - ferry and border filters still use curated route metadata, rather than live route analysis;
 - the map is illustrative, not geographic;
 - live route time stays in the planner and is not carried onto detail pages, because the selected starting point is temporary;
+- an account does not yet save a starting point, visited places, ratings, or notes;
+- email verification and password recovery are not included in the current prototype;
 - schedules, weather, lodging availability, and prices are not live;
 - the dataset is a product-research seed, not comprehensive travel advice.
 
@@ -50,17 +53,17 @@ The first credible version is deliberately regional and narrow:
 - curated destination data and explainable scoring;
 - a short four-step first-run setup followed by one editable filter-and-results workspace.
 
-Flights, booking, accounts, detailed itineraries, live pricing, and AI-generated recommendations are outside the initial MVP.
+Flights, booking, detailed itineraries, live pricing, and AI-generated recommendations are outside the initial MVP. Account-based personalization is being added separately and never blocks public planning.
 
 ## Technology status
 
-The prototype uses the official Next.js App Router with React and TypeScript. Its curated catalog is stored in Neon Postgres and loaded through a server-only Drizzle data layer; versioned migrations and an idempotent development seed keep the initial dataset reproducible. The interactive planner and deterministic ranking remain client-side. A server-only Mapbox integration uses Search Box autocomplete to confirm a temporary origin, then uses the Matrix API for live drive-time estimates; it does not persist Mapbox search data. Vercel Hobby is the planned deployment target. User accounts and AI-generated recommendations remain outside the MVP.
+The prototype uses the official Next.js App Router with React and TypeScript. Its curated catalog and optional Better Auth account data are stored in Neon Postgres through a server-only Drizzle data layer; versioned migrations and an idempotent development seed keep the initial dataset reproducible. The interactive planner and deterministic ranking remain client-side. A server-only Mapbox integration uses Search Box autocomplete to confirm a temporary origin, then uses the Matrix API for live drive-time estimates; it does not persist Mapbox search data. Vercel Hobby is the planned deployment target. AI-generated recommendations remain outside the MVP.
 
 ## Local development
 
 Prerequisites: Node.js `24.x` and npm `11.x`.
 
-Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL` and a Mapbox `MAPBOX_ACCESS_TOKEN`, then run:
+Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL`, a Mapbox `MAPBOX_ACCESS_TOKEN`, and a private `BETTER_AUTH_SECRET`, then run:
 
 ```bash
 npm install
