@@ -21,6 +21,11 @@ import type {
   ExclusionReason,
   Preference,
 } from "@/lib/trips/types";
+import type {
+  LiveRouteResult,
+} from "@/lib/trips/mapbox-routes";
+import type { ResolvedOrigin } from "@/lib/trips/mapbox-search";
+import { OriginAutocomplete } from "./origin-autocomplete";
 import { PlannerWizard } from "./planner-wizard";
 
 type TripPlannerProps = {
@@ -104,6 +109,19 @@ function createPlannerStateFromInitialSearch(initialSearch: string) {
   return readPlannerStateFromSearch(initialSearch) ?? createInitialPlannerState();
 }
 
+type LiveRouteState = {
+  originQuery: string;
+  result: LiveRouteResult;
+};
+
+type RouteStatus = "idle" | "loading" | "success" | "error";
+
+const defaultOrigin: ResolvedOrigin = {
+  label: "Issaquah, Washington, United States",
+  latitude: 47.5301,
+  longitude: -122.0326,
+};
+
 export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
   const { destinations, preferenceOptions } = catalog;
   const [plannerState, dispatch] = useReducer(
@@ -119,6 +137,11 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
   const [hasShareableState, setHasShareableState] = useState(
     () => readPlannerStateFromSearch(initialSearch) !== null,
   );
+  const [liveRouteState, setLiveRouteState] = useState<LiveRouteState | null>(null);
+  const [routeStatus, setRouteStatus] = useState<RouteStatus>("idle");
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [confirmedOrigin, setConfirmedOrigin] = useState<ResolvedOrigin>(defaultOrigin);
+  const [confirmedOriginQuery, setConfirmedOriginQuery] = useState("Issaquah, WA");
   const {
     originQuery: address,
     maxDriveHours: radius,
@@ -130,18 +153,50 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
     hideVisited,
   } = plannerState;
 
+  const currentOriginQuery = address.trim();
+  const liveRouteResult =
+    liveRouteState?.originQuery === currentOriginQuery
+      ? liveRouteState.result
+      : null;
+  const liveRoutesByDestinationId = useMemo(
+    () =>
+      new Map(
+        (liveRouteResult?.routes ?? []).map((route) => [
+          route.destinationId,
+          route,
+        ]),
+      ),
+    [liveRouteResult],
+  );
+  const destinationsWithCurrentRoutes = useMemo(
+    () =>
+      destinations.map((destination) => {
+        const route = liveRoutesByDestinationId.get(destination.id);
+        return route
+          ? { ...destination, hours: route.durationMinutes / 60 }
+          : destination;
+      }),
+    [destinations, liveRoutesByDestinationId],
+  );
+
   const { recommendations: ranked, exclusions } = useMemo(
     () =>
       recommendDestinations(
-        destinations,
+        destinationsWithCurrentRoutes,
         toTripCriteria(plannerState, prototypeVisitedDestinationIds),
       ),
-    [destinations, plannerState],
+    [destinationsWithCurrentRoutes, plannerState],
   );
 
   const topResults = ranked.slice(0, 5);
   const selected = ranked.find((destination) => destination.id === selectedId) ?? topResults[0];
   const exclusionSummary = formatExclusionSummary(exclusions);
+  const isIssaquah = /issaquah/i.test(address);
+  const mapOriginLabel = liveRouteResult
+    ? liveRouteResult.originLabel.split(",")[0]
+    : isIssaquah
+      ? "Issaquah"
+      : "Your start";
 
   useEffect(() => {
     if (!hasShareableState) return;
@@ -158,17 +213,51 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
     dispatch({ type: "toggle-preference", preference });
   }
 
-  function handleSearch(event: FormEvent<HTMLFormElement>) {
+  async function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSearchCount((current) => current + 1);
-    if (topResults[0]) setSelectedId(topResults[0].id);
+    if (confirmedOriginQuery !== currentOriginQuery) {
+      setRouteStatus("error");
+      setRouteError("Choose a starting point from the suggestions to calculate live routes.");
+      setSearchCount((current) => current + 1);
+      return;
+    }
+
+    setRouteStatus("loading");
+    setRouteError(null);
+    setLiveRouteState(null);
     document.getElementById("matches")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    try {
+      const response = await fetch("/api/route-estimates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origin: confirmedOrigin }),
+      });
+      const payload = (await response.json()) as LiveRouteResult & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Live routing is temporarily unavailable.");
+      }
+
+      setLiveRouteState({ originQuery: currentOriginQuery, result: payload });
+      setRouteStatus("success");
+      if (payload.routes[0]) setSelectedId(payload.routes[0].destinationId);
+    } catch (error) {
+      setRouteStatus("error");
+      setRouteError(
+        error instanceof Error ? error.message : "Live routing is temporarily unavailable.",
+      );
+    } finally {
+      setSearchCount((current) => current + 1);
+    }
   }
 
   function restartPlanner() {
     dispatch({ type: "reset" });
     setSelectedId("point-defiance");
     setSearchCount(0);
+    setConfirmedOrigin(defaultOrigin);
+    setConfirmedOriginQuery("Issaquah, WA");
     setShowWizard(true);
     setHasShareableState(false);
 
@@ -184,8 +273,6 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
     setHasShareableState(true);
     setShowWizard(false);
   }
-
-  const isIssaquah = /issaquah/i.test(address);
 
   return (
     <main>
@@ -221,6 +308,14 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
           state={plannerState}
           preferenceOptions={preferenceOptions}
           dispatch={dispatch}
+          onOriginChange={(value) => {
+            dispatch({ type: "set-origin-query", value });
+            setConfirmedOriginQuery("");
+          }}
+          onOriginSelect={(origin) => {
+            setConfirmedOrigin(origin);
+            setConfirmedOriginQuery(origin.label);
+          }}
           onComplete={completeWizard}
         />
       ) : (
@@ -241,24 +336,31 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
           </div>
 
           <label className="field-label" htmlFor="address">Starting point</label>
-          <div className="address-field">
-            <span className="pin-mini" aria-hidden="true" />
-            <input
-              id="address"
-              value={address}
-              onChange={(event) =>
-                dispatch({
-                  type: "set-origin-query",
-                  value: event.target.value,
-                })
-              }
-              placeholder="City or street address"
-            />
-          </div>
-          <p className={`demo-note ${isIssaquah ? "" : "is-warning"}`}>
-            {isIssaquah
-              ? "Live prototype uses the Issaquah drive-time dataset."
-              : "Address captured. Recommendations still use the Issaquah demo dataset."}
+          <OriginAutocomplete
+            id="address"
+            value={address}
+            onChange={(value) => {
+              dispatch({ type: "set-origin-query", value });
+              setConfirmedOriginQuery("");
+              setRouteStatus("idle");
+              setRouteError(null);
+              setLiveRouteState(null);
+            }}
+            onSelect={(origin) => {
+              setConfirmedOrigin(origin);
+              setConfirmedOriginQuery(origin.label);
+            }}
+          />
+          <p className={`demo-note ${routeStatus === "error" || !isIssaquah ? "is-warning" : ""}`}>
+            {routeStatus === "loading"
+              ? "Checking live drive times with Mapbox…"
+              : liveRouteResult
+                ? `Live drive times from ${liveRouteResult.originLabel}. Ferry and border filters still use curated route metadata.`
+                : routeStatus === "error"
+                  ? `${routeError} Showing curated Issaquah drive-time estimates.`
+                  : isIssaquah
+                    ? "Select Find my trips to replace the Issaquah baseline with live drive times."
+                    : "Choose a suggestion to confirm the starting point before calculating live drive times."}
           </p>
 
           <div className="form-row">
@@ -397,8 +499,8 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
             <span>Hide places we’ve already visited</span>
           </label>
 
-          <button className="primary-button" type="submit">
-            Find my trips
+          <button className="primary-button" type="submit" disabled={routeStatus === "loading"}>
+            {routeStatus === "loading" ? "Checking live routes" : "Find my trips"}
             <span aria-hidden="true">↗</span>
           </button>
         </form>
@@ -406,22 +508,22 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
         <div className="map-card">
           <div className="map-topline">
             <div>
-              <span className="map-kicker">Your search area</span>
-              <strong>{topResults.length} strong matches near {isIssaquah ? "Issaquah" : "your start"}</strong>
+              <span className="map-kicker">{liveRouteResult ? "Live driving times" : "Your search area"}</span>
+              <strong>{topResults.length} strong matches near {mapOriginLabel}</strong>
             </div>
             <span className="map-scale">≈ {radius.toFixed(1)}h drive</span>
           </div>
 
-          <div className="map-canvas" aria-label="Stylized map of recommended destinations around Issaquah">
+          <div className="map-canvas" aria-label="Illustrative map of recommended destinations around your starting point">
             <div className="water-shape water-one" />
             <div className="water-shape water-two" />
             <div className="mountain-band" aria-hidden="true">CASCADE RANGE</div>
             <div className="road road-one" />
             <div className="road road-two" />
             <div className="radius-ring" style={{ width: `${32 + radius * 8}%`, height: `${32 + radius * 8}%` }} />
-            <div className="home-pin" aria-label="Starting point: Issaquah">
+            <div className="home-pin" aria-label={`Starting point: ${mapOriginLabel}`}>
               <span />
-              <small>Issaquah</small>
+              <small>{mapOriginLabel}</small>
             </div>
             <span className="map-label seattle">Seattle</span>
             <span className="map-label olympia">Olympia</span>
@@ -532,7 +634,13 @@ export function TripPlanner({ catalog, initialSearch = "" }: TripPlannerProps) {
           </div>
         )}
         <p className="search-status" aria-live="polite">
-          {searchCount > 0 ? `Updated with your latest trip brief · search ${searchCount}` : "Adjust the brief above—the ranking updates as you go."}
+          {routeStatus === "loading"
+            ? "Calculating live drive times…"
+            : liveRouteResult
+              ? `Live drive times calculated for ${liveRouteResult.originLabel} · search ${searchCount}`
+              : searchCount > 0
+                ? `Updated with curated fallback estimates · search ${searchCount}`
+                : "Adjust the brief above—the ranking updates as you go."}
           {exclusionSummary && ` · Filtered: ${exclusionSummary}`}
         </p>
       </section>

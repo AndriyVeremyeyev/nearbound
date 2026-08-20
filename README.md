@@ -24,15 +24,15 @@ The existing concept spike includes:
 - a four-step guided setup for trip basics, time, experiences, and route logistics;
 - an origin field and travel-radius control;
 - traveling-with-children, trip length, and experience filters;
-- a deterministic ranking over 12 curated destinations;
+- a deterministic ranking over 18 curated destinations;
 - visible reasons, cautions, and stay suggestions;
 - a single workspace where the same answers and results can be changed without restarting the setup;
 - a stylized map used to test the visual direction.
 
 Important limitations:
 
-- the origin field is not connected to geocoding or routing yet;
-- travel times are curated estimates rather than live route calculations;
+- when a `MAPBOX_ACCESS_TOKEN` is configured locally, the starting point uses temporary Mapbox autocomplete and the selected place drives live Mapbox drive-time estimates for the current session;
+- ferry and border filters still use curated route metadata, rather than live route analysis;
 - the map is illustrative, not geographic;
 - schedules, weather, lodging availability, and prices are not live;
 - the dataset is a product-research seed, not comprehensive travel advice.
@@ -52,13 +52,13 @@ Flights, booking, accounts, detailed itineraries, live pricing, and AI-generated
 
 ## Technology status
 
-The prototype uses the official Next.js App Router with React and TypeScript. Its curated catalog is stored in Neon Postgres and loaded through a server-only Drizzle data layer; versioned migrations and an idempotent development seed keep the initial dataset reproducible. The interactive planner and deterministic ranking remain client-side. Mapbox is the planned map, geocoding, and routing provider, and Vercel Hobby is the planned deployment target; neither integration is active yet. User accounts and AI-generated recommendations remain outside the MVP.
+The prototype uses the official Next.js App Router with React and TypeScript. Its curated catalog is stored in Neon Postgres and loaded through a server-only Drizzle data layer; versioned migrations and an idempotent development seed keep the initial dataset reproducible. The interactive planner and deterministic ranking remain client-side. A server-only Mapbox integration uses Search Box autocomplete to confirm a temporary origin, then uses the Matrix API for live drive-time estimates; it does not persist Mapbox search data. Vercel Hobby is the planned deployment target. User accounts and AI-generated recommendations remain outside the MVP.
 
 ## Local development
 
 Prerequisites: Node.js `24.x` and npm `11.x`.
 
-Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL`, then run:
+Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL` and a Mapbox `MAPBOX_ACCESS_TOKEN`, then run:
 
 ```bash
 npm install
@@ -67,7 +67,7 @@ npm run db:seed
 npm run dev
 ```
 
-The seed bootstraps the current 12-destination concept dataset; ongoing content can be updated directly in Neon without changing application code.
+The seed bootstraps the current 18-destination concept dataset; ongoing content can be updated directly in Neon without changing application code.
 
 Useful checks:
 

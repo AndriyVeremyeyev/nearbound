@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 
 import {
   destinationPreferences,
@@ -11,6 +11,43 @@ import { getDatabase } from "@/lib/db/client";
 import type { Destination, DestinationCatalog, SourceReference } from "./types";
 
 const DEFAULT_ORIGIN_ID = "issaquah-wa";
+
+export type RoutableDestination = {
+  id: string;
+  latitude: number;
+  longitude: number;
+};
+
+export async function loadRoutableDestinations(): Promise<RoutableDestination[]> {
+  const database = getDatabase();
+
+  return database
+    .select({
+      id: destinationsTable.id,
+      latitude: destinationsTable.latitude,
+      longitude: destinationsTable.longitude,
+    })
+    .from(destinationsTable)
+    .where(
+      and(
+        eq(destinationsTable.published, true),
+        isNotNull(destinationsTable.latitude),
+        isNotNull(destinationsTable.longitude),
+      ),
+    )
+    .orderBy(destinationsTable.id)
+    .then((destinations) =>
+      destinations.flatMap((destination) =>
+        destination.latitude === null || destination.longitude === null
+          ? []
+          : [{
+              id: destination.id,
+              latitude: destination.latitude,
+              longitude: destination.longitude,
+            }],
+      ),
+    );
+}
 
 export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
   const database = getDatabase();

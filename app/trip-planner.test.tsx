@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { DestinationCatalog } from "@/lib/trips/types";
 import { TripPlanner } from "./trip-planner";
 
+const originalFetch = global.fetch;
+
 const catalog: DestinationCatalog = {
   destinations: [
     {
@@ -46,8 +48,18 @@ function completeWizard() {
   fireEvent.click(screen.getByRole("button", { name: "Show my trips" }));
 }
 
+beforeEach(() => {
+  Element.prototype.scrollIntoView = jest.fn();
+});
+
 afterEach(() => {
   window.history.replaceState(null, "", "/");
+  jest.restoreAllMocks();
+  if (originalFetch) {
+    global.fetch = originalFetch;
+  } else {
+    Reflect.deleteProperty(global, "fetch");
+  }
 });
 
 describe("Nearbound concept prototype", () => {
@@ -118,7 +130,7 @@ describe("Nearbound concept prototype", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show my trips" }));
 
     expect(
-      screen.getByText(/recommendations still use the Issaquah demo dataset/i),
+      screen.getByText(/choose a suggestion to confirm the starting point/i),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Day trip" })).toHaveAttribute(
       "aria-pressed",
@@ -206,5 +218,137 @@ describe("Nearbound concept prototype", () => {
 
     expect(window.location.search).toBe("");
     expect(screen.getByRole("heading", { name: "Tell us the trip basics" })).toBeInTheDocument();
+  });
+
+  it("uses the live route response after the user submits a trip brief", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        originLabel: "Issaquah, Washington, United States",
+        calculatedAt: "2026-08-20T16:00:00.000Z",
+        routes: [
+          {
+            destinationId: "point-defiance",
+            durationMinutes: 90,
+            distanceMeters: 69420,
+          },
+        ],
+      }),
+    } as Response);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(<TripPlanner catalog={catalog} />);
+    completeWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/live drive times from Issaquah, Washington/i),
+      ).toBeInTheDocument(),
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/route-estimates",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(screen.getByText("1h 30m drive")).toBeInTheDocument();
+  });
+
+  it("does not route an edited starting point until a suggestion is confirmed", () => {
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock as typeof fetch;
+
+    render(<TripPlanner catalog={catalog} />);
+    completeWizard();
+    fireEvent.change(screen.getByLabelText("Starting point"), {
+      target: { value: "Seattle" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+
+    expect(
+      screen.getByText(/choose a starting point from the suggestions to calculate live routes/i),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("confirms a suggested starting point before it requests live routes", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          suggestions: [
+            {
+              id: "dXJuOm1ieHBsYzpwbGFjZTphYmMxMjM",
+              label: "Seattle, Washington, United States",
+              context: "Washington, United States",
+            },
+          ],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          origin: {
+            label: "Seattle, Washington, United States",
+            latitude: 47.6062,
+            longitude: -122.3321,
+          },
+        }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          originLabel: "Seattle, Washington, United States",
+          calculatedAt: "2026-08-20T16:00:00.000Z",
+          routes: [
+            {
+              destinationId: "point-defiance",
+              durationMinutes: 56,
+              distanceMeters: 56100,
+            },
+          ],
+        }),
+      } as Response);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(<TripPlanner catalog={catalog} />);
+    completeWizard();
+
+    fireEvent.change(screen.getByLabelText("Starting point"), {
+      target: { value: "Sea" },
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: /Seattle, Washington/i }),
+      ).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("option", { name: /Seattle, Washington/i }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Starting point")).toHaveValue(
+        "Seattle, Washington, United States",
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+    await waitFor(() =>
+      expect(screen.getByText(/live drive times from Seattle/i)).toBeInTheDocument(),
+    );
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      "/api/route-estimates",
+      expect.objectContaining({
+        body: JSON.stringify({
+          origin: {
+            label: "Seattle, Washington, United States",
+            latitude: 47.6062,
+            longitude: -122.3321,
+          },
+        }),
+        method: "POST",
+      }),
+    );
   });
 });

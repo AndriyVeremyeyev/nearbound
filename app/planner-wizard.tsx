@@ -8,11 +8,15 @@ import {
   type PlannerState,
 } from "@/lib/trips/planner-state";
 import type { PreferenceOption } from "@/lib/trips/types";
+import type { ResolvedOrigin } from "@/lib/trips/mapbox-search";
+import { OriginAutocomplete } from "./origin-autocomplete";
 
 type PlannerWizardProps = {
   state: PlannerState;
   preferenceOptions: readonly PreferenceOption[];
   dispatch: (action: PlannerAction) => void;
+  onOriginChange: (value: string) => void;
+  onOriginSelect: (origin: ResolvedOrigin) => void;
   onComplete: () => void;
 };
 
@@ -54,6 +58,8 @@ export function PlannerWizard({
   state,
   preferenceOptions,
   dispatch,
+  onOriginChange,
+  onOriginSelect,
   onComplete,
 }: PlannerWizardProps) {
   const [stepIndex, setStepIndex] = useState(0);
@@ -122,22 +128,16 @@ export function PlannerWizard({
             <div className="wizard-basics-step">
               <div>
                 <label className="field-label" htmlFor="wizard-origin">Starting point</label>
-                <div className="address-field wizard-address-field">
-                  <span className="pin-mini" aria-hidden="true" />
-                  <input
-                    id="wizard-origin"
-                    value={state.originQuery}
-                    onChange={(event) =>
-                      dispatch({
-                        type: "set-origin-query",
-                        value: event.target.value,
-                      })
-                    }
-                    placeholder="City or street address"
-                  />
-                </div>
+                <OriginAutocomplete
+                  id="wizard-origin"
+                  value={state.originQuery}
+                  onChange={onOriginChange}
+                  onSelect={onOriginSelect}
+                  fieldClassName="wizard-address-field"
+                  showGuidance={false}
+                />
                 <p className="wizard-field-note">
-                  Recommendations still use the Issaquah demo dataset. Your answer is kept only in this open page.
+                  Choose a suggestion to confirm your starting point. It stays only in this open page.
                 </p>
               </div>
 
