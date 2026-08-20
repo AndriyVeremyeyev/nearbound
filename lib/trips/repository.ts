@@ -61,6 +61,8 @@ export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
         id: destinationsTable.id,
         name: destinationsTable.name,
         region: destinationsTable.region,
+        latitude: destinationsTable.latitude,
+        longitude: destinationsTable.longitude,
         durationMinutes: routeEstimates.durationMinutes,
         usesFerry: routeEstimates.usesFerry,
         crossesBorder: routeEstimates.crossesBorder,
@@ -143,6 +145,9 @@ export async function loadDestinationCatalog(): Promise<DestinationCatalog> {
       id: row.id,
       name: row.name,
       region: row.region,
+      ...(row.latitude !== null && row.longitude !== null
+        ? { latitude: row.latitude, longitude: row.longitude }
+        : {}),
       hours: row.durationMinutes / 60,
       usesFerry: row.usesFerry,
       crossesBorder: row.crossesBorder,

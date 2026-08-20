@@ -9,6 +9,8 @@ export type Destination = {
   id: string;
   name: string;
   region: string;
+  latitude?: number;
+  longitude?: number;
   hours: number;
   usesFerry: boolean;
   crossesBorder: boolean;

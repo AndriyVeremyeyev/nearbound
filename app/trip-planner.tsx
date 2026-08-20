@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useReducer, useState } from "react";
-import type { CSSProperties } from "react";
 
 import {
   createInitialPlannerState,
@@ -31,6 +30,7 @@ import { AccountMenu } from "./account-menu";
 import { OriginAutocomplete } from "./origin-autocomplete";
 import { PlannerWizard } from "./planner-wizard";
 import { SavedOriginSelector } from "./saved-origin-selector";
+import { InteractiveMap } from "./interactive-map";
 
 type TripPlannerProps = {
   catalog: DestinationCatalog;
@@ -38,27 +38,7 @@ type TripPlannerProps = {
   initialVisitedDestinationIds?: readonly string[];
   savedOrigins?: readonly SavedOrigin[];
   initialSearch?: string;
-};
-
-const prototypeMapPositions: Record<string, CSSProperties> = {
-  "point-defiance": { left: "43%", top: "59%" },
-  "northwest-trek": { left: "50%", top: "70%" },
-  "ocean-shores": { left: "14%", top: "69%" },
-  bellingham: { left: "49%", top: "21%" },
-  alderbrook: { left: "29%", top: "64%" },
-  "great-wolf": { left: "44%", top: "78%" },
-  suncadia: { left: "69%", top: "55%" },
-  leavenworth: { left: "79%", top: "42%" },
-  vancouver: { left: "50%", top: "7%" },
-  seabrook: { left: "12%", top: "61%" },
-  sequim: { left: "20%", top: "39%" },
-  "long-beach": { left: "16%", top: "89%" },
-  "gig-harbor": { left: "39%", top: "61%" },
-  "whidbey-island": { left: "40%", top: "18%" },
-  "port-townsend": { left: "25%", top: "28%" },
-  "mount-rainier": { left: "64%", top: "80%" },
-  "lake-chelan": { left: "91%", top: "36%" },
-  anacortes: { left: "42%", top: "11%" },
+  mapboxAccessToken?: string;
 };
 
 const dayOptions = [
@@ -133,6 +113,7 @@ export function TripPlanner({
   initialVisitedDestinationIds = [],
   savedOrigins = [],
   initialSearch = "",
+  mapboxAccessToken,
 }: TripPlannerProps) {
   const { destinations, preferenceOptions } = catalog;
   const [plannerState, dispatch] = useReducer(
@@ -157,6 +138,7 @@ export function TripPlanner({
   const [routeError, setRouteError] = useState<string | null>(null);
   const [confirmedOrigin, setConfirmedOrigin] = useState<ResolvedOrigin>(defaultOrigin);
   const [confirmedOriginQuery, setConfirmedOriginQuery] = useState("Issaquah, WA");
+  const [appliedOrigin, setAppliedOrigin] = useState<ResolvedOrigin>(defaultOrigin);
   const {
     originQuery: address,
     maxDriveHours: radius,
@@ -250,6 +232,7 @@ export function TripPlanner({
     }
 
     setAppliedPlannerState(plannerState);
+    setAppliedOrigin(confirmedOrigin);
     setRouteStatus("loading");
     setRouteError(null);
     setLiveRouteState(null);
@@ -287,6 +270,7 @@ export function TripPlanner({
     setSearchCount(0);
     setConfirmedOrigin(defaultOrigin);
     setConfirmedOriginQuery("Issaquah, WA");
+    setAppliedOrigin(defaultOrigin);
     setShowWizard(true);
     setHasShareableState(false);
 
@@ -300,6 +284,7 @@ export function TripPlanner({
 
   function completeWizard() {
     setAppliedPlannerState(plannerState);
+    setAppliedOrigin(confirmedOrigin);
     setHasShareableState(true);
     setShowWizard(false);
   }
@@ -571,35 +556,13 @@ export function TripPlanner({
             <span className="map-scale">≈ {appliedDriveHours.toFixed(1)}h drive</span>
           </div>
 
-          <div className="map-canvas" aria-label="Illustrative map of recommended destinations around your starting point">
-            <div className="water-shape water-one" />
-            <div className="water-shape water-two" />
-            <div className="mountain-band" aria-hidden="true">CASCADE RANGE</div>
-            <div className="road road-one" />
-            <div className="road road-two" />
-            <div className="radius-ring" style={{ width: `${32 + appliedDriveHours * 8}%`, height: `${32 + appliedDriveHours * 8}%` }} />
-            <div className="home-pin" aria-label={`Starting point: ${mapOriginLabel}`}>
-              <span />
-              <small>{mapOriginLabel}</small>
-            </div>
-            <span className="map-label seattle">Seattle</span>
-            <span className="map-label olympia">Olympia</span>
-            <span className="map-label canada">CANADA</span>
-            <span className="map-label pacific">PACIFIC OCEAN</span>
-            {topResults.map((destination, index) => (
-              <button
-                key={destination.id}
-                type="button"
-                className={`destination-pin ${selected?.id === destination.id ? "active" : ""}`}
-                style={prototypeMapPositions[destination.id]}
-                onClick={() => setSelectedId(destination.id)}
-                aria-label={`${destination.name}, ${destination.score}% match`}
-              >
-                <span><i>{index + 1}</i></span>
-                <small>{destination.name}</small>
-              </button>
-            ))}
-          </div>
+          <InteractiveMap
+            accessToken={mapboxAccessToken}
+            origin={appliedOrigin}
+            destinations={topResults}
+            selectedDestinationId={selected?.id}
+            onDestinationSelect={setSelectedId}
+          />
 
           {selected && (
             <article className="map-spotlight" aria-live="polite">

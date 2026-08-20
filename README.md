@@ -30,13 +30,13 @@ The existing concept spike includes:
 - an optional email-and-password account with persistent sessions;
 - a per-account profile with saved starting points, visited-place history, ratings, and short notes;
 - a single workspace where the same answers and results can be changed without restarting the setup;
-- a stylized map used to test the visual direction.
+- an interactive Mapbox map with the active starting point and top-ranked destinations.
 
 Important limitations:
 
 - when a `MAPBOX_ACCESS_TOKEN` is configured locally, the starting point uses temporary Mapbox autocomplete and the selected place drives live Mapbox drive-time estimates for the current session;
 - ferry and border filters still use curated route metadata, rather than live route analysis;
-- the map is illustrative, not geographic;
+- the browser map needs a separate public `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN`; it is URL-restricted in Mapbox and is intentionally visible to the browser, while `MAPBOX_ACCESS_TOKEN` stays server-only;
 - live route time stays in the planner and is not carried onto detail pages, because the selected starting point is temporary;
 - saved starting points retain only user-entered address fields; Mapbox confirms coordinates only for the active trip and does not persist them;
 - email verification and password recovery are not included in the current prototype;
@@ -58,13 +58,13 @@ Flights, booking, detailed itineraries, live pricing, and AI-generated recommend
 
 ## Technology status
 
-The prototype uses the official Next.js App Router with React and TypeScript. Its curated catalog, optional Better Auth account data, profile fields, user-entered saved starting points, and per-account visited history are stored in Neon Postgres through a server-only Drizzle data layer; versioned migrations and an idempotent development seed keep the initial dataset reproducible. The interactive planner and deterministic ranking remain client-side. A server-only Mapbox integration uses Search Box autocomplete to confirm a temporary origin, then uses the Matrix API for live drive-time estimates; it does not persist Mapbox search data. Vercel Hobby is the planned deployment target. AI-generated recommendations remain outside the MVP.
+The prototype uses the official Next.js App Router with React and TypeScript. Its curated catalog, optional Better Auth account data, profile fields, user-entered saved starting points, and per-account visited history are stored in Neon Postgres through a server-only Drizzle data layer; versioned migrations and an idempotent development seed keep the initial dataset reproducible. The interactive planner and deterministic ranking remain client-side. A server-only Mapbox integration uses Search Box autocomplete to confirm a temporary origin, then uses the Matrix API for live drive-time estimates; an independent URL-restricted public Mapbox token renders the interactive map in the browser. It does not persist Mapbox search data. Vercel Hobby is the planned deployment target. AI-generated recommendations remain outside the MVP.
 
 ## Local development
 
 Prerequisites: Node.js `24.x` and npm `11.x`.
 
-Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL`, a Mapbox `MAPBOX_ACCESS_TOKEN`, and a private `BETTER_AUTH_SECRET`, then run:
+Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL`, a server-only Mapbox `MAPBOX_ACCESS_TOKEN`, a URL-restricted public `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` for the browser map, and a private `BETTER_AUTH_SECRET`, then run:
 
 ```bash
 npm install
