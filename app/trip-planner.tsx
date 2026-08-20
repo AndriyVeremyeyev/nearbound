@@ -41,6 +41,12 @@ const prototypeMapPositions: Record<string, CSSProperties> = {
   seabrook: { left: "12%", top: "61%" },
   sequim: { left: "20%", top: "39%" },
   "long-beach": { left: "16%", top: "89%" },
+  "gig-harbor": { left: "39%", top: "61%" },
+  "whidbey-island": { left: "40%", top: "18%" },
+  "port-townsend": { left: "25%", top: "28%" },
+  "mount-rainier": { left: "64%", top: "80%" },
+  "lake-chelan": { left: "91%", top: "36%" },
+  anacortes: { left: "42%", top: "11%" },
 };
 
 const prototypeVisitedDestinationIds = ["sequim", "long-beach"];

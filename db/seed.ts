@@ -355,6 +355,169 @@ const destinationSeeds: DestinationSeed[] = [
       notes: "Official visitor guide used for destination framing.",
     },
   },
+  {
+    id: "gig-harbor",
+    name: "Gig Harbor",
+    region: "Gig Harbor, WA",
+    countryCode: "US",
+    minDays: 1,
+    maxDays: 2,
+    familyFit: 8,
+    weatherBackup: 6,
+    summary:
+      "An easy waterfront reset with a walkable harbor, parks, and enough food stops to keep a family day loose.",
+    anchor:
+      "Harborfront walk and one museum or park stop—leave the rest of the afternoon unscheduled.",
+    stay: "Make it a day trip, or book one night close to the harbor.",
+    caution:
+      "Tacoma Narrows traffic can erase the advantage of the short distance on peak weekends.",
+    published: true,
+    durationMinutes: 78,
+    preferenceIds: ["ocean", "city"],
+    sourceReference: {
+      title: "Visit Gig Harbor",
+      url: "https://visitgigharbor.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
+  },
+  {
+    id: "whidbey-island",
+    name: "Whidbey Island",
+    region: "South Whidbey, WA",
+    countryCode: "US",
+    minDays: 1,
+    maxDays: 3,
+    familyFit: 8,
+    weatherBackup: 6,
+    summary:
+      "A real island change of pace without a long vacation: beaches, small towns, forest, and one unavoidable ferry decision.",
+    anchor:
+      "Choose one Langley or beach stop, then leave room for the ferry and an unhurried meal.",
+    stay: "A cottage or inn near Langley keeps the second day simple.",
+    caution:
+      "Ferry waits and weekend sailing demand can make a short itinerary feel rushed.",
+    published: true,
+    durationMinutes: 108,
+    usesFerry: true,
+    preferenceIds: ["ocean", "forest", "city"],
+    sourceReference: {
+      title: "Whidbey and Camano Islands",
+      url: "https://whidbeycamanoislands.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
+  },
+  {
+    id: "port-townsend",
+    name: "Port Townsend",
+    region: "Olympic Peninsula, WA",
+    countryCode: "US",
+    minDays: 2,
+    maxDays: 3,
+    familyFit: 8,
+    weatherBackup: 7,
+    summary:
+      "A historic waterfront town that pairs beaches and Fort Worden with restaurants, bookstores, and an easy overnight rhythm.",
+    anchor:
+      "Fort Worden or the waterfront—not both as a packed checklist—then dinner near Water Street.",
+    stay: "Stay within town so the car can rest after arrival.",
+    caution:
+      "The peninsula drive earns an overnight; do not treat this as a casual late-afternoon outing.",
+    published: true,
+    durationMinutes: 150,
+    preferenceIds: ["ocean", "city", "forest"],
+    sourceReference: {
+      title: "Enjoy Port Townsend",
+      url: "https://enjoypt.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
+  },
+  {
+    id: "mount-rainier",
+    name: "Mount Rainier National Park",
+    region: "Ashford, WA",
+    countryCode: "US",
+    minDays: 1,
+    maxDays: 3,
+    familyFit: 7,
+    weatherBackup: 3,
+    summary:
+      "The high-payoff mountain day: ancient forest and big scenery when conditions cooperate, with little indoor fallback.",
+    anchor:
+      "Pick one short family-friendly trail and a picnic; treat the biggest views as a bonus, not a promise.",
+    stay: "Ashford works for an early start and an unhurried return the next morning.",
+    caution:
+      "Road access, parking, and mountain weather can change quickly—verify the park status before leaving.",
+    published: true,
+    durationMinutes: 150,
+    preferenceIds: ["mountains", "forest"],
+    sourceReference: {
+      title: "Mount Rainier National Park",
+      url: "https://www.nps.gov/mora/index.htm",
+      sourceType: "official",
+      confidence: "high",
+      notes: "National Park Service source used for visitor-planning context.",
+    },
+  },
+  {
+    id: "lake-chelan",
+    name: "Lake Chelan",
+    region: "Chelan, WA",
+    countryCode: "US",
+    minDays: 2,
+    maxDays: 4,
+    familyFit: 8,
+    weatherBackup: 8,
+    summary:
+      "A sunny lake-resort weekend with water time, a compact town, and enough easy activities to make a longer drive worthwhile.",
+    anchor:
+      "Choose one beach or water block, then use the waterfront and pool as the low-effort second act.",
+    stay: "A condo or resort with a kitchen and swim access makes the two-night minimum work.",
+    caution:
+      "The drive is long for a one-night reset, and summer lodging fills early.",
+    published: true,
+    durationMinutes: 210,
+    preferenceIds: ["resort", "mountains", "city"],
+    sourceReference: {
+      title: "Lake Chelan Chamber of Commerce",
+      url: "https://www.lakechelan.com/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
+  },
+  {
+    id: "anacortes",
+    name: "Anacortes",
+    region: "Fidalgo Island, WA",
+    countryCode: "US",
+    minDays: 1,
+    maxDays: 3,
+    familyFit: 8,
+    weatherBackup: 6,
+    summary:
+      "A compact Salish Sea town with beaches, trails, and a real island feel—without needing a ferry for the destination itself.",
+    anchor:
+      "Washington Park or Cap Sante, then a short waterfront dinner instead of trying to chase every viewpoint.",
+    stay: "A downtown or waterfront base supports an easy second day.",
+    caution:
+      "Windy coastal weather can narrow the outdoor plan, and this is not a substitute for a San Juan itinerary.",
+    published: true,
+    durationMinutes: 132,
+    preferenceIds: ["ocean", "forest", "city"],
+    sourceReference: {
+      title: "Experience Anacortes",
+      url: "https://www.anacortes.org/about-anacortes/",
+      sourceType: "official",
+      confidence: "high",
+      notes: "Official visitor guide used for destination framing.",
+    },
+  },
 ];
 
 loadLocalEnvironment();
