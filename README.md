@@ -70,10 +70,12 @@ Copy `.env.example` to `.env.local` and provide a Neon `DATABASE_URL`, a server-
 npm install
 npm run db:migrate
 npm run db:seed
+npm run db:catalog:check
 npm run dev
 ```
 
 The seed bootstraps the current 18-destination concept dataset; ongoing content can be updated directly in Neon without changing application code.
+Run `npm run db:catalog:check` after catalog changes in Neon to verify the published route graph, coordinates, source evidence, and review metadata before relying on it in the planner.
 
 Useful checks:
 
