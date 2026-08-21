@@ -6,6 +6,7 @@ import {
   oregonCoastAreas,
   oregonCoastRoute,
   oregonCoastRouteLegs,
+  oregonCoastTripPlans,
   oregonCoastSources,
   oregonCoastStops,
   sourceForOregonCoastStop,
@@ -47,5 +48,12 @@ describe("Oregon Coast catalog definition", () => {
     );
 
     expect(report).toEqual({ errors: [], warnings: [] });
+  });
+
+  it("defines only realistic one-to-four-day plans inside the longer corridor", () => {
+    expect(oregonCoastTripPlans).toEqual([
+      expect.objectContaining({ id: "north-coast-escape", minDays: 2, minDaysWithChildren: null, maxDays: 2 }),
+      expect.objectContaining({ id: "north-oregon-coast", minDays: 3, minDaysWithChildren: 4, maxDays: 4 }),
+    ]);
   });
 });

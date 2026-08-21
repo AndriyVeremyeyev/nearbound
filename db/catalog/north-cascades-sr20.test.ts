@@ -6,6 +6,7 @@ import {
   northCascadesSr20Areas,
   northCascadesSr20Route,
   northCascadesSr20RouteLegs,
+  northCascadesSr20TripPlans,
   northCascadesSr20Sources,
   northCascadesSr20Stops,
   sourceForNorthCascadesSr20Stop,
@@ -49,5 +50,12 @@ describe("North Cascades SR-20 catalog definition", () => {
     );
 
     expect(report).toEqual({ errors: [], warnings: [] });
+  });
+
+  it("keeps the one-day sampler out of family results while retaining a fuller family loop", () => {
+    expect(northCascadesSr20TripPlans).toEqual([
+      expect.objectContaining({ id: "north-cascades-sampler", minDays: 1, minDaysWithChildren: null, maxDays: 1 }),
+      expect.objectContaining({ id: "north-cascades-loop", minDays: 2, minDaysWithChildren: 3, maxDays: 4 }),
+    ]);
   });
 });

@@ -71,10 +71,35 @@ export const oregonCoastRoute = {
   name: "Oregon Pacific Coast",
   shape: "linear",
   countryCode: "US",
-  minDays: 6,
-  maxDays: 10,
-  summary: "A north-to-south Oregon Coast road trip from Astoria to Brookings. Its 14 areas and optional anchors can support a slower coast reset or a more active multi-stop itinerary.",
+  minDays: 2,
+  maxDays: 4,
+  summary: "A north-to-south Oregon Coast planning corridor from Astoria to Brookings. Nearbound turns its connected areas and stops into shorter, realistic trip plans rather than suggesting the full coast at once.",
 } as const;
+
+export const oregonCoastTripPlans = [
+  {
+    id: "north-coast-escape",
+    slug: "north-coast-escape",
+    name: "North Coast escape",
+    summary: "A compact adult-focused overnight around Astoria and Cannon Beach, with enough time for one indoor anchor and one stretch of coast.",
+    startAreaId: "oregon-coast-astoria",
+    endAreaId: "oregon-coast-cannon-beach",
+    minDays: 2,
+    minDaysWithChildren: null,
+    maxDays: 2,
+  },
+  {
+    id: "north-oregon-coast",
+    slug: "north-oregon-coast",
+    name: "North Oregon Coast",
+    summary: "A fuller Astoria-to-Newport coast trip with room for beaches, a town base and selected anchors instead of racing the whole Oregon shoreline.",
+    startAreaId: "oregon-coast-astoria",
+    endAreaId: "oregon-coast-newport",
+    minDays: 3,
+    minDaysWithChildren: 4,
+    maxDays: 4,
+  },
+] as const;
 
 export const oregonCoastRouteLegs = [
   { position: 1, fromAreaId: "oregon-coast-astoria", toAreaId: "oregon-coast-cannon-beach", distanceMiles: 27, driveMinutes: 40 },

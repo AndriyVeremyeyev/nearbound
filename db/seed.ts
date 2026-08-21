@@ -11,6 +11,7 @@ import {
   origins,
   preferences,
   routeWaypoints,
+  routeTripPlans,
   routes,
   routeEstimates,
   routeLegs,
@@ -25,6 +26,7 @@ import {
   oregonCoastAreas,
   oregonCoastRoute,
   oregonCoastRouteLegs,
+  oregonCoastTripPlans,
   oregonCoastSources,
   oregonCoastStops,
   sourceForOregonCoastStop,
@@ -36,6 +38,7 @@ import {
   northCascadesSr20HikeDetails,
   northCascadesSr20Route,
   northCascadesSr20RouteLegs,
+  northCascadesSr20TripPlans,
   northCascadesSr20Sources,
   northCascadesSr20Stops,
   sourceForNorthCascadesSr20Area,
@@ -49,7 +52,7 @@ const preferenceSeeds = [
   { id: "animals", label: "Animals", sortOrder: 4 },
   { id: "city", label: "City", sortOrder: 5 },
   { id: "historic", label: "Historic places", sortOrder: 6 },
-  { id: "resort", label: "Easy resort", sortOrder: 7 },
+  { id: "resort", label: "Resort", sortOrder: 7 },
   { id: "mountains", label: "Mountains", sortOrder: 8 },
   { id: "forest", label: "Forest", sortOrder: 9 },
   { id: "ferry", label: "Ferry", sortOrder: 10 },
@@ -735,6 +738,7 @@ await database
 const routeCatalogSeeds = [
   {
     route: oregonCoastRoute,
+    tripPlans: oregonCoastTripPlans,
     areas: oregonCoastAreas,
     stops: oregonCoastStops,
     hikeDetails: [],
@@ -754,6 +758,7 @@ const routeCatalogSeeds = [
   },
   {
     route: northCascadesSr20Route,
+    tripPlans: northCascadesSr20TripPlans,
     areas: northCascadesSr20Areas,
     stops: northCascadesSr20Stops,
     hikeDetails: northCascadesSr20HikeDetails,
@@ -864,6 +869,7 @@ for (const catalog of routeCatalogSeeds) {
   ));
   await database.delete(routeWaypoints).where(inArray(routeWaypoints.routeId, [catalog.route.id]));
   await database.delete(routeLegs).where(inArray(routeLegs.routeId, [catalog.route.id]));
+  await database.delete(routeTripPlans).where(inArray(routeTripPlans.routeId, [catalog.route.id]));
   await database.delete(areaStops).where(inArray(areaStops.areaId, areaIds));
   await database.delete(stopPreferences).where(inArray(stopPreferences.stopId, stopIds));
   await database.delete(hikeDetails).where(inArray(hikeDetails.stopId, stopIds));
@@ -903,6 +909,11 @@ for (const catalog of routeCatalogSeeds) {
   await database.insert(routeLegs).values(catalog.legs.map((leg) => ({
     ...leg, routeId: catalog.route.id, sourceType: "curated",
     lastVerifiedAt: catalog.verifiedOn, reviewDueAt: catalog.reviewDueOn,
+  })));
+  await database.insert(routeTripPlans).values(catalog.tripPlans.map((plan) => ({
+    ...plan,
+    routeId: catalog.route.id,
+    published: true,
   })));
   await database.insert(catalogEvidence).values([
     ...catalog.routeEvidence.map((evidence) => ({

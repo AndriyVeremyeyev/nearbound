@@ -6,6 +6,7 @@ import {
   catalogEvidence,
   catalogSources,
   routeLegs,
+  routeTripPlans,
   routeWaypoints,
   routes,
   stopPreferences,
@@ -18,7 +19,7 @@ export async function loadRouteCatalog(
   routeId: string,
 ): Promise<RouteCatalog | null> {
   const database = getDatabase();
-  const [routeRows, areaRows, legRows, stopRows, sourceRows] = await Promise.all([
+  const [routeRows, areaRows, legRows, stopRows, sourceRows, tripPlanRows] = await Promise.all([
     database
       .select({ id: routes.id, name: routes.name, shape: routes.shape, summary: routes.summary })
       .from(routes)
@@ -83,6 +84,20 @@ export async function loadRouteCatalog(
       .from(catalogEvidence)
       .innerJoin(catalogSources, eq(catalogEvidence.sourceId, catalogSources.id))
       .where(eq(catalogEvidence.routeId, routeId)),
+    database
+      .select({
+        id: routeTripPlans.id,
+        name: routeTripPlans.name,
+        summary: routeTripPlans.summary,
+        startAreaId: routeTripPlans.startAreaId,
+        endAreaId: routeTripPlans.endAreaId,
+        minDays: routeTripPlans.minDays,
+        minDaysWithChildren: routeTripPlans.minDaysWithChildren,
+        maxDays: routeTripPlans.maxDays,
+      })
+      .from(routeTripPlans)
+      .where(and(eq(routeTripPlans.routeId, routeId), eq(routeTripPlans.published, true)))
+      .orderBy(asc(routeTripPlans.minDays), asc(routeTripPlans.name)),
   ]);
   const route = routeRows[0];
 
@@ -121,6 +136,7 @@ export async function loadRouteCatalog(
       ...source,
       lastVerifiedAt: source.lastVerifiedAt ?? null,
     })),
+    plans: tripPlanRows,
     areas: areaRows.flatMap(({ id, name, summary, latitude, longitude }) =>
       latitude === null || longitude === null
         ? []

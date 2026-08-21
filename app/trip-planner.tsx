@@ -15,7 +15,7 @@ import {
   readPlannerStateFromSearch,
   writePlannerSearch,
 } from "@/lib/trips/planner-url-state";
-import { composeTripIdeas, type RouteCatalog } from "@/lib/catalog/compose-trip";
+import { composeTripIdeas, fitTripIdeaToAccess, type RouteCatalog } from "@/lib/catalog/compose-trip";
 import type {
   DestinationCatalog,
   ExcludedDestination,
@@ -179,6 +179,7 @@ export function TripPlanner({
   const [selectedId, setSelectedId] = useState("point-defiance");
   const [visitedDestinationIds, setVisitedDestinationIds] = useState(initialVisitedDestinationIds);
   const [searchCount, setSearchCount] = useState(0);
+  const [hasRunSearch, setHasRunSearch] = useState(false);
   const [showWizard, setShowWizard] = useState(
     () => readPlannerStateFromSearch(initialSearch) === null,
   );
@@ -284,7 +285,11 @@ export function TripPlanner({
             return [];
           }
 
-          return [{ catalog, idea, outboundAccess, returnAccess }];
+          const fittedIdea = fitTripIdeaToAccess(idea, appliedPlannerState, {
+            outboundMinutes: outboundAccess.outboundMinutes,
+            returnMinutes: returnAccess.returnMinutes,
+          });
+          return fittedIdea ? [{ catalog, idea: fittedIdea, outboundAccess, returnAccess }] : [];
         }),
       );
     },
@@ -322,7 +327,7 @@ export function TripPlanner({
           id: `route:${idea.id}`,
           context: catalog.name,
           title: idea.title,
-          summary: catalog.summary ?? "A connected route with room to choose the stops that suit the day.",
+        summary: idea.summary ?? catalog.summary ?? "A connected route with room to choose the stops that suit the day.",
           facts: [
             `${idea.areaIds.length} areas · ${idea.stops.length} stops`,
             `${formatDriveTime(outboundAccess.outboundMinutes / 60)} to ${idea.startArea.name}`,
@@ -338,23 +343,30 @@ export function TripPlanner({
           endAreaId: idea.endArea.id,
         }));
 
+    if (!hasRunSearch) return [];
+
     return appliedPlannerState.days >= 2
       ? [...routeIdeas, ...destinationIdeas]
       : destinationIdeas;
-  }, [appliedPlannerState.days, catalogRouteIdeas, liveRoutesByDestinationId, ranked]);
+  }, [appliedPlannerState.days, catalogRouteIdeas, hasRunSearch, liveRoutesByDestinationId, ranked]);
   const visibleTripIdeas = showAllIdeas ? tripIdeas : tripIdeas.slice(0, 3);
   const mapRouteLayers = useMemo(
-    () => routeCatalogs.map((catalog) => ({
-      id: catalog.id,
-      name: catalog.name,
-      shape: catalog.shape,
-      areas: catalog.areas,
-    })),
-    [routeCatalogs],
+    () => hasRunSearch
+      ? catalogRouteIdeas.map(({ catalog, idea }) => ({
+          id: `route:${idea.id}`,
+          catalogId: catalog.id,
+          name: idea.title,
+          shape: catalog.shape,
+          areas: catalog.areas.filter((area) => idea.areaIds.includes(area.id)),
+        }))
+      : [],
+    [catalogRouteIdeas, hasRunSearch],
   );
 
-  const topResults = ranked.slice(0, 5);
-  const selected = ranked.find((destination) => destination.id === selectedId) ?? topResults[0];
+  const topResults = hasRunSearch ? ranked.slice(0, 5) : [];
+  const selected = hasRunSearch
+    ? ranked.find((destination) => destination.id === selectedId) ?? topResults[0]
+    : undefined;
   const exclusionSummary = formatExclusionSummary(exclusions);
   const isAppliedIssaquah = /issaquah/i.test(appliedOriginQuery);
   const mapOriginLabel = liveRouteResult
@@ -407,6 +419,7 @@ export function TripPlanner({
     }
 
     setAppliedPlannerState(plannerState);
+    setHasRunSearch(true);
     setShowAllIdeas(false);
     setAppliedOrigin(confirmedOrigin);
     setRouteStatus("loading");
@@ -444,6 +457,7 @@ export function TripPlanner({
     setAppliedPlannerState(createInitialPlannerState());
     setSelectedId("point-defiance");
     setSearchCount(0);
+    setHasRunSearch(false);
     setConfirmedOrigin(defaultOrigin);
     setConfirmedOriginQuery("Issaquah, WA");
     setAppliedOrigin(defaultOrigin);
@@ -461,6 +475,7 @@ export function TripPlanner({
   function completeWizard() {
     setAppliedPlannerState(plannerState);
     setShowAllIdeas(false);
+    setHasRunSearch(false);
     setAppliedOrigin(confirmedOrigin);
     setHasShareableState(true);
     setShowWizard(false);
@@ -745,10 +760,10 @@ export function TripPlanner({
         <div className="map-card">
           <div className="map-topline">
             <div>
-              <span className="map-kicker">{hasPendingChanges ? "Current results" : liveRouteResult ? "Live driving times" : "Your search area"}</span>
-              <strong>{topResults.length} strong matches near {mapOriginLabel}</strong>
+              <span className="map-kicker">{hasRunSearch ? (hasPendingChanges ? "Current results" : liveRouteResult ? "Live driving times" : "Your search area") : "Ready when you are"}</span>
+              <strong>{hasRunSearch ? `${topResults.length} strong matches near ${mapOriginLabel}` : "Choose your brief, then find your trips"}</strong>
             </div>
-            <span className="map-scale">≈ {appliedDriveHours.toFixed(1)}h getting there</span>
+            {hasRunSearch && <span className="map-scale">≈ {appliedDriveHours.toFixed(1)}h getting there</span>}
           </div>
 
           <InteractiveMap
@@ -756,6 +771,7 @@ export function TripPlanner({
             origin={appliedOrigin}
             destinations={topResults}
             routeLayers={mapRouteLayers}
+            showResultPlaces={hasRunSearch}
             selectedDestinationId={selected?.id}
             onDestinationSelect={setSelectedId}
           />
@@ -872,7 +888,12 @@ export function TripPlanner({
             {showAllIdeas ? "Show fewer ideas" : `Show ${tripIdeas.length - 3} more ideas`}
           </button>
         )}
-        {tripIdeas.length === 0 && (
+        {!hasRunSearch ? (
+          <div className="empty-state">
+            <h3>Ready to plan a trip?</h3>
+            <p>Set the brief above, then select Find my trips to calculate the shortlist and map.</p>
+          </div>
+        ) : tripIdeas.length === 0 && (
           <div className="empty-state">
             <h3>No trip idea fits every active constraint.</h3>
             <p>Adjust the drive time, interests, or route boundaries — we won’t pretend a rushed plan is a good fit.</p>

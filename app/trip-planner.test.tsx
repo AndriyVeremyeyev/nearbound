@@ -90,7 +90,22 @@ afterEach(() => {
 });
 
 describe("Nearbound concept prototype", () => {
-  it("renders the planner with a server-provided destination catalog", () => {
+  it("waits for Find my trips after setup before showing a shortlist", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        originLabel: "Issaquah, Washington, United States",
+        calculatedAt: "2026-08-21T16:00:00.000Z",
+        routes: [{
+          destinationId: "point-defiance",
+          durationMinutes: 72,
+          distanceMeters: 69420,
+          returnDurationMinutes: 75,
+          returnDistanceMeters: 70000,
+        }],
+      }),
+    } as Response);
+    global.fetch = fetchMock as typeof fetch;
     render(<TripPlanner catalog={catalog} initialSearch={window.location.search} />);
 
     expect(
@@ -108,9 +123,12 @@ describe("Nearbound concept prototype", () => {
     expect(
       screen.getByRole("heading", { name: "Your trip ideas" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Ready to plan a trip?")).toBeInTheDocument();
+    expect(screen.queryByText("Why this fits")).not.toBeInTheDocument();
     expect(screen.getByLabelText(/allow ferries/i)).toBeChecked();
     expect(screen.getByLabelText(/allow borders/i)).toBeChecked();
-    expect(screen.getByText("Why this fits")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+    await waitFor(() => expect(screen.getByText("Why this fits")).toBeInTheDocument());
     expect(
       screen.getByText(/matches all selected experiences: animals and ocean/i),
     ).toBeInTheDocument();
@@ -120,7 +138,9 @@ describe("Nearbound concept prototype", () => {
     expect(
       screen.getByRole("link", { name: /point defiance zoo & aquarium/i }),
     ).toHaveAttribute("href", "https://www.pdza.org/");
-    expect(screen.getByText(/set the brief above, then select find my trips/i)).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText(/live drive times calculated for Issaquah/i)).toBeInTheDocument(),
+    );
   });
 
   it("shows connected Oregon Coast ideas after live route access is calculated", async () => {
@@ -240,8 +260,28 @@ describe("Nearbound concept prototype", () => {
       ],
     };
 
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        originLabel: "Issaquah, Washington, United States",
+        calculatedAt: "2026-08-21T16:00:00.000Z",
+        routes: [{
+          destinationId: "ferry-only",
+          durationMinutes: 72,
+          distanceMeters: 69420,
+          returnDurationMinutes: 75,
+          returnDistanceMeters: 70000,
+        }],
+      }),
+    } as Response);
+    global.fetch = fetchMock as typeof fetch;
+
     render(<TripPlanner catalog={ferryCatalog} />);
     completeWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+    await waitFor(() => expect(
+      screen.getByRole("link", { name: "Open details for Ferry-only destination" }),
+    ).toBeInTheDocument());
     fireEvent.click(screen.getByLabelText(/allow ferries/i));
 
     expect(screen.getByRole("link", { name: "Open details for Ferry-only destination" })).toBeInTheDocument();
@@ -380,7 +420,23 @@ describe("Nearbound concept prototype", () => {
   });
 
   it("updates a signed-in user’s visited history without putting it in the shared URL", async () => {
-    const fetchMock = jest.fn().mockResolvedValue({ ok: true } as Response);
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          originLabel: "Issaquah, Washington, United States",
+          calculatedAt: "2026-08-21T16:00:00.000Z",
+          routes: [{
+            destinationId: "point-defiance",
+            durationMinutes: 72,
+            distanceMeters: 69420,
+            returnDurationMinutes: 75,
+            returnDistanceMeters: 70000,
+          }],
+        }),
+      } as Response)
+      .mockResolvedValueOnce({ ok: true } as Response);
     global.fetch = fetchMock as typeof fetch;
     window.history.replaceState(
       null,
@@ -396,6 +452,8 @@ describe("Nearbound concept prototype", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Mark as visited" })).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Mark as visited" }));
 
     await waitFor(() =>

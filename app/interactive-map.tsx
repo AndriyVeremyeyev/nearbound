@@ -8,6 +8,7 @@ import type { RankedDestination } from "@/lib/trips/types";
 
 export type MapRouteLayer = {
   id: string;
+  catalogId?: string;
   name: string;
   shape?: "linear" | "loop";
   areas: readonly { id: string; name: string; latitude: number; longitude: number }[];
@@ -23,6 +24,7 @@ type InteractiveMapProps = {
   origin: ResolvedOrigin;
   destinations: readonly RankedDestination[];
   routeLayers?: readonly MapRouteLayer[];
+  showResultPlaces?: boolean;
   selectedDestinationId?: string;
   onDestinationSelect: (destinationId: string) => void;
 };
@@ -46,6 +48,7 @@ export function InteractiveMap({
   origin,
   destinations,
   routeLayers = EMPTY_ROUTE_LAYERS,
+  showResultPlaces = true,
   selectedDestinationId,
   onDestinationSelect,
 }: InteractiveMapProps) {
@@ -56,7 +59,7 @@ export function InteractiveMap({
   const selectDestinationRef = useRef(onDestinationSelect);
   const [mapReady, setMapReady] = useState(false);
   const [showPlaces, setShowPlaces] = useState(true);
-  const [visibleRouteIds, setVisibleRouteIds] = useState<string[]>([]);
+  const [showRoutes, setShowRoutes] = useState(false);
   const [routeGeometries, setRouteGeometries] = useState<Record<string, LoadedRouteGeometry>>({});
   const [loadingRouteIds, setLoadingRouteIds] = useState<string[]>([]);
   const [routeGeometryErrors, setRouteGeometryErrors] = useState<Record<string, string>>({});
@@ -101,7 +104,8 @@ export function InteractiveMap({
   useEffect(() => {
     setRouteGeometries((geometries) => Object.fromEntries(
       Object.entries(geometries).filter(([routeId]) =>
-        routeLayers.find((route) => route.id === routeId)?.shape !== "loop",
+        routeLayers.some((route) => route.id === routeId)
+        && routeLayers.find((route) => route.id === routeId)?.shape !== "loop",
       ),
     ));
     setRouteGeometryErrors({});
@@ -124,10 +128,13 @@ export function InteractiveMap({
     });
 
     try {
-      const response = await fetch(`/api/route-geometries/${route.id}`, {
+      const response = await fetch(`/api/route-geometries/${route.catalogId ?? route.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(route.shape === "loop" ? { origin } : {}),
+        body: JSON.stringify({
+          ...(route.shape === "loop" ? { origin } : {}),
+          areaIds: route.areas.map((area) => area.id),
+        }),
       });
       const body = await response.json() as {
         coordinates?: unknown;
@@ -153,6 +160,14 @@ export function InteractiveMap({
       setLoadingRouteIds((routeIds) => routeIds.filter((routeId) => routeId !== route.id));
     }
   }
+
+  useEffect(() => {
+    if (!showRoutes) return;
+    routeLayers.forEach((route) => void loadRouteGeometry(route));
+    // Route layers and origin are the inputs to the request; geometry state deliberately
+    // stays out of this dependency list so a completed request does not request itself again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [originKey, routeLayers, showRoutes]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -194,7 +209,7 @@ export function InteractiveMap({
           ],
         },
       });
-      const visibility = visibleRouteIds.includes(route.id) ? "visible" : "none";
+      const visibility = showRoutes ? "visible" : "none";
       map.addLayer({
         id: lineId,
         type: "line",
@@ -232,7 +247,7 @@ export function InteractiveMap({
         if (map.getSource(sourceId)) map.removeSource(sourceId);
       }
     };
-  }, [mapReady, originKey, routeGeometries, routeLayers, visibleRouteIds]);
+  }, [mapReady, originKey, routeGeometries, routeLayers, showRoutes]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -248,7 +263,7 @@ export function InteractiveMap({
       destinationMarkersRef.current = [];
       const bounds = new mapboxgl.LngLatBounds([origin.longitude, origin.latitude], [origin.longitude, origin.latitude]);
 
-      if (showPlaces) {
+      if (showResultPlaces && showPlaces) {
         const originElement = document.createElement("div");
         originElement.className = "nearbound-map-origin";
         originElement.setAttribute("aria-label", `Starting point: ${origin.label}`);
@@ -273,14 +288,14 @@ export function InteractiveMap({
         });
       }
 
-      const visibleRoutes = routeLayers.filter((route) => visibleRouteIds.includes(route.id));
+      const visibleRoutes = showRoutes ? routeLayers : [];
       if (visibleRoutes.length > 0) {
         visibleRoutes.forEach((route) => route.areas.forEach((area) => {
           bounds.extend([area.longitude, area.latitude]);
         }));
       }
 
-      if (showPlaces || visibleRoutes.length > 0) {
+      if ((showResultPlaces && showPlaces) || visibleRoutes.length > 0) {
         map.fitBounds(bounds, { padding: 72, maxZoom: 8.7, duration: 0 });
       } else {
         map.easeTo({ center: [origin.longitude, origin.latitude], zoom: 8, duration: 0 });
@@ -290,7 +305,7 @@ export function InteractiveMap({
     return () => {
       disposed = true;
     };
-  }, [accessToken, destinations, mapReady, origin, routeLayers, selectedDestinationId, showPlaces, visibleRouteIds]);
+  }, [accessToken, destinations, mapReady, origin, routeLayers, selectedDestinationId, showPlaces, showResultPlaces, showRoutes]);
 
   if (!accessToken) {
     return (
@@ -305,32 +320,32 @@ export function InteractiveMap({
     <div className="map-canvas map-shell" aria-label="Interactive map of recommended destinations">
       <div className="map-layer-controls" aria-label="Map layers">
         <span>Map layers</span>
-        <label>
-          <input type="checkbox" checked={showPlaces} onChange={(event) => setShowPlaces(event.target.checked)} />
-          Places
-        </label>
-        {routeLayers.map((route) => (
-          <label key={route.id}>
+        {showResultPlaces && (
+          <label>
+            <input type="checkbox" checked={showPlaces} onChange={(event) => setShowPlaces(event.target.checked)} />
+            Places
+          </label>
+        )}
+        {routeLayers.length > 0 && (
+          <label>
             <input
               type="checkbox"
-              checked={visibleRouteIds.includes(route.id)}
+              checked={showRoutes}
               onChange={() => {
-                const isVisible = visibleRouteIds.includes(route.id);
-                setVisibleRouteIds((visible) =>
-                  isVisible
-                    ? visible.filter((routeId) => routeId !== route.id)
-                    : [...visible, route.id],
-                );
-                if (!isVisible) void loadRouteGeometry(route);
+                if (showRoutes) {
+                  setShowRoutes(false);
+                  return;
+                }
+                setShowRoutes(true);
               }}
             />
-            {loadingRouteIds.includes(route.id)
-              ? `Drawing ${route.name}…`
-              : routeGeometryErrors[route.id]
-                ? `${route.name} (route order)`
-                : route.name}
+            {loadingRouteIds.length > 0
+              ? "Drawing routes…"
+              : Object.keys(routeGeometryErrors).length > 0
+                ? "Routes (some geometry unavailable)"
+                : "Routes"}
           </label>
-        ))}
+        )}
       </div>
       <div className="map-render" ref={containerRef} />
     </div>

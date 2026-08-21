@@ -216,10 +216,35 @@ export const northCascadesSr20Route = {
   name: "North Cascades Loop via SR-20",
   shape: "loop",
   countryCode: "US",
-  minDays: 3,
+  minDays: 1,
   maxDays: 4,
   summary: "A seasonal Cascade loop over SR-20: Newhalem and Diablo Lake, Washington Pass and Blue Lake, Winthrop, Lake Chelan and Leavenworth. The drive home from Leavenworth is calculated from the traveler’s starting point.",
 } as const;
+
+export const northCascadesSr20TripPlans = [
+  {
+    id: "north-cascades-sampler",
+    slug: "north-cascades-sampler",
+    name: "North Cascades sampler",
+    summary: "A fast adult-only mountain day built around Diablo Lake, Washington Pass and a short Winthrop stop, with no expectation of seeing the whole loop.",
+    startAreaId: "north-cascades-newhalem-diablo",
+    endAreaId: "north-cascades-winthrop-methow",
+    minDays: 1,
+    minDaysWithChildren: null,
+    maxDays: 1,
+  },
+  {
+    id: "north-cascades-loop",
+    slug: "north-cascades-loop",
+    name: "North Cascades loop",
+    summary: "A seasonal SR-20 loop with time for mountain scenery, a Methow overnight, Lake Chelan and a gentler return through Leavenworth.",
+    startAreaId: "north-cascades-newhalem-diablo",
+    endAreaId: "north-cascades-leavenworth",
+    minDays: 2,
+    minDaysWithChildren: 3,
+    maxDays: 4,
+  },
+] as const;
 
 export const northCascadesSr20RouteLegs = [
   { position: 1, fromAreaId: "north-cascades-newhalem-diablo", toAreaId: "north-cascades-washington-pass-blue-lake", distanceMiles: 42, driveMinutes: 60 },

@@ -5,7 +5,25 @@ import { isResolvedOrigin } from "@/lib/trips/mapbox-search";
 
 type RouteGeometryRequest = {
   origin?: unknown;
+  areaIds?: unknown;
 };
+
+function selectedCatalogAreas(
+  catalog: Awaited<ReturnType<typeof loadRouteCatalog>>,
+  requestedAreaIds: unknown,
+) {
+  if (!catalog || !Array.isArray(requestedAreaIds) || requestedAreaIds.length < 2) {
+    return null;
+  }
+  if (!requestedAreaIds.every((areaId) => typeof areaId === "string")) return null;
+
+  const firstIndex = catalog.areas.findIndex((area) => area.id === requestedAreaIds[0]);
+  if (firstIndex < 0) return null;
+  const selectedAreas = catalog.areas.slice(firstIndex, firstIndex + requestedAreaIds.length);
+  if (!selectedAreas.every((area, index) => area.id === requestedAreaIds[index])) return null;
+
+  return { ...catalog, areas: selectedAreas };
+}
 
 export async function POST(
   request: Request,
@@ -28,14 +46,18 @@ export async function POST(
   if (!catalog) {
     return Response.json({ error: "This route is not available." }, { status: 404 });
   }
-  if (catalog.shape === "loop" && !isResolvedOrigin(body.origin)) {
+  const selectedCatalog = selectedCatalogAreas(catalog, body.areaIds);
+  if (!selectedCatalog) {
+    return Response.json({ error: "This route segment is not available." }, { status: 400 });
+  }
+  if (selectedCatalog.shape === "loop" && !isResolvedOrigin(body.origin)) {
     return Response.json({ error: "Choose a starting point before drawing this loop." }, { status: 400 });
   }
 
   try {
     const geometry = await calculateCatalogRouteGeometry({
       accessToken,
-      catalog,
+      catalog: selectedCatalog,
       origin: isResolvedOrigin(body.origin) ? body.origin : undefined,
     });
     return Response.json(geometry, { headers: { "Cache-Control": "no-store" } });

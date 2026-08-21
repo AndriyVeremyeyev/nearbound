@@ -488,6 +488,42 @@ export const routes = pgTable(
   ],
 );
 
+export const routeTripPlans = pgTable(
+  "route_trip_plans",
+  {
+    id: text("id").primaryKey(),
+    routeId: text("route_id")
+      .notNull()
+      .references(() => routes.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    summary: text("summary").notNull(),
+    startAreaId: text("start_area_id")
+      .notNull()
+      .references(() => areas.id, { onDelete: "restrict" }),
+    endAreaId: text("end_area_id")
+      .notNull()
+      .references(() => areas.id, { onDelete: "restrict" }),
+    minDays: integer("min_days").notNull(),
+    minDaysWithChildren: integer("min_days_with_children"),
+    maxDays: integer("max_days").notNull(),
+    published: boolean("published").notNull().default(false),
+  },
+  (table) => [
+    index("route_trip_plans_route_id_idx").on(table.routeId),
+    index("route_trip_plans_start_area_id_idx").on(table.startAreaId),
+    index("route_trip_plans_end_area_id_idx").on(table.endAreaId),
+    check("route_trip_plans_distinct_areas_check", sql`${table.startAreaId} <> ${table.endAreaId}`),
+    check("route_trip_plans_min_days_check", sql`${table.minDays} between 1 and 4`),
+    check("route_trip_plans_max_days_check", sql`${table.maxDays} between 1 and 4`),
+    check("route_trip_plans_day_range_check", sql`${table.minDays} <= ${table.maxDays}`),
+    check(
+      "route_trip_plans_family_day_range_check",
+      sql`${table.minDaysWithChildren} is null or (${table.minDaysWithChildren} between ${table.minDays} and ${table.maxDays})`,
+    ),
+  ],
+);
+
 export const routeWaypoints = pgTable(
   "route_waypoints",
   {

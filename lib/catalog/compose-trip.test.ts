@@ -1,4 +1,10 @@
-import { composeTripIdeas, findTripIdea, type RouteCatalog } from "./compose-trip";
+import {
+  composeTripIdeas,
+  estimateTripLoadMinutes,
+  fitTripIdeaToAccess,
+  findTripIdea,
+  type RouteCatalog,
+} from "./compose-trip";
 
 const oregonCoastFixture: RouteCatalog = {
   id: "oregon-pacific-coast-byway",
@@ -93,5 +99,68 @@ describe("composeTripIdeas", () => {
 
     expect(idea?.title).toBe("Astoria to Cannon Beach");
     expect(idea?.areaIds).toEqual(["astoria", "cannon"]);
+  });
+
+  it("uses curated trip-plan minimums to hide a rushed family route", () => {
+    const catalogWithPlans: RouteCatalog = {
+      ...oregonCoastFixture,
+      plans: [
+        {
+          id: "north-coast-escape",
+          name: "North Coast escape",
+          summary: "A short coast plan.",
+          startAreaId: "astoria",
+          endAreaId: "cannon",
+          minDays: 2,
+          minDaysWithChildren: 3,
+          maxDays: 4,
+        },
+      ],
+    };
+
+    expect(composeTripIdeas(catalogWithPlans, {
+      days: 2,
+      pace: "balanced",
+      preferences: ["ocean"],
+      travelingWithChildren: true,
+    })).toEqual([]);
+
+    const [adultIdea] = composeTripIdeas(catalogWithPlans, {
+      days: 2,
+      pace: "balanced",
+      preferences: ["ocean"],
+      travelingWithChildren: false,
+    });
+    expect(adultIdea.title).toBe("North Coast escape");
+  });
+
+  it("adds planned family breaks and travel-day buffers to the time budget", () => {
+    const load = estimateTripLoadMinutes(
+      { activityMinutes: 180, driveSegmentMinutes: [50] },
+      { days: 1, pace: "balanced", travelingWithChildren: true },
+      { outboundMinutes: 250, returnMinutes: 130 },
+    );
+
+    expect(load.drivingMinutes).toBe(430);
+    expect(load.familyBufferMinutes).toBe(135);
+    expect(load.totalMinutes).toBe(745);
+    expect(load.maximumMinutes).toBe(540);
+  });
+
+  it("keeps a viable route by trimming optional anchors to the real access budget", () => {
+    const [idea] = composeTripIdeas(oregonCoastFixture, {
+      days: 2,
+      pace: "balanced",
+      preferences: ["ocean", "animals"],
+      travelingWithChildren: false,
+    });
+    const fitted = fitTripIdeaToAccess(
+      idea,
+      { days: 2, pace: "balanced", travelingWithChildren: false },
+      { outboundMinutes: 260, returnMinutes: 260 },
+    );
+
+    expect(fitted).not.toBeNull();
+    expect(fitted!.activityMinutes).toBeLessThan(idea.activityMinutes);
   });
 });

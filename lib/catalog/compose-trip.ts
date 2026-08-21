@@ -25,12 +25,24 @@ export type CatalogRouteLeg = {
   driveMinutes: number;
 };
 
+export type CatalogTripPlan = {
+  id: string;
+  name: string;
+  summary: string;
+  startAreaId: string;
+  endAreaId: string;
+  minDays: number;
+  minDaysWithChildren: number | null;
+  maxDays: number;
+};
+
 export type RouteCatalog = {
   id: string;
   name: string;
   shape?: "linear" | "loop";
   summary?: string;
   sourceReferences?: readonly CatalogRouteSourceReference[];
+  plans?: readonly CatalogTripPlan[];
   areas: readonly CatalogRouteArea[];
   stops: readonly CatalogRouteStop[];
   legs: readonly CatalogRouteLeg[];
@@ -52,15 +64,33 @@ export type TripCompositionCriteria = {
 
 export type TripIdea = {
   id: string;
+  planId?: string;
   title: string;
+  summary?: string;
   areaIds: string[];
   startArea: CatalogRouteArea;
   endArea: CatalogRouteArea;
   stops: CatalogRouteStop[];
   distanceMiles: number;
   driveMinutes: number;
+  driveSegmentMinutes: number[];
   activityMinutes: number;
   matchedPreferences: string[];
+};
+
+export type TripIdeaAccess = {
+  outboundMinutes: number;
+  returnMinutes: number;
+};
+
+const FAMILY_BREAK_INTERVAL_MINUTES = 120;
+const FAMILY_BREAK_MINUTES = 30;
+const FAMILY_TRAVEL_DAY_BUFFER_MINUTES = 45;
+
+const DAILY_LOAD_LIMITS: Record<TripPace, number> = {
+  easy: 420,
+  balanced: 540,
+  "see-more": 600,
 };
 
 const PACE_RULES: Record<
@@ -162,6 +192,125 @@ function matchedPreferences(
   );
 }
 
+type TripSection = {
+  plan?: CatalogTripPlan;
+  selectedAreas: CatalogRouteArea[];
+};
+
+function sectionsForCriteria(
+  catalog: RouteCatalog,
+  criteria: TripCompositionCriteria,
+  minAreas: number,
+  maxAreas: number,
+): TripSection[] {
+  const days = Math.max(1, Math.round(criteria.days));
+
+  if (catalog.plans && catalog.plans.length > 0) {
+    return catalog.plans.flatMap((plan) => {
+      const minimumDays = criteria.travelingWithChildren
+        ? plan.minDaysWithChildren
+        : plan.minDays;
+      if (minimumDays === null || days < minimumDays || days > plan.maxDays) {
+        return [];
+      }
+
+      const startIndex = catalog.areas.findIndex((area) => area.id === plan.startAreaId);
+      const endIndex = catalog.areas.findIndex((area) => area.id === plan.endAreaId);
+      if (startIndex < 0 || endIndex <= startIndex) return [];
+
+      return [{ plan, selectedAreas: catalog.areas.slice(startIndex, endIndex + 1) }];
+    });
+  }
+
+  const sections: TripSection[] = [];
+  for (let startIndex = 0; startIndex < catalog.areas.length; startIndex += 1) {
+    for (
+      let endIndex = startIndex + minAreas - 1;
+      endIndex < catalog.areas.length && endIndex - startIndex + 1 <= maxAreas;
+      endIndex += 1
+    ) {
+      sections.push({ selectedAreas: catalog.areas.slice(startIndex, endIndex + 1) });
+    }
+  }
+
+  return sections;
+}
+
+function requiredFamilyBreakMinutes(segmentMinutes: readonly number[]) {
+  return segmentMinutes.reduce(
+    (total, minutes) =>
+      total + Math.floor(Math.max(0, minutes - 1) / FAMILY_BREAK_INTERVAL_MINUTES) * FAMILY_BREAK_MINUTES,
+    0,
+  );
+}
+
+/**
+ * Uses an additive family buffer rather than hiding extra time in a multiplier:
+ * a break after roughly each two hours of uninterrupted driving plus time lost
+ * to loading, meals and settling in on travel days.
+ */
+export function estimateTripLoadMinutes(
+  idea: Pick<TripIdea, "activityMinutes" | "driveSegmentMinutes">,
+  criteria: Pick<TripCompositionCriteria, "days" | "pace" | "travelingWithChildren">,
+  access: TripIdeaAccess,
+) {
+  const driveSegments = [
+    access.outboundMinutes,
+    ...idea.driveSegmentMinutes,
+    access.returnMinutes,
+  ];
+  const drivingMinutes = driveSegments.reduce((total, minutes) => total + minutes, 0);
+  const familyBufferMinutes = criteria.travelingWithChildren
+    ? requiredFamilyBreakMinutes(driveSegments)
+      + Math.min(Math.max(1, Math.round(criteria.days)), 2) * FAMILY_TRAVEL_DAY_BUFFER_MINUTES
+    : 0;
+
+  return {
+    drivingMinutes,
+    familyBufferMinutes,
+    totalMinutes: drivingMinutes + idea.activityMinutes + familyBufferMinutes,
+    maximumMinutes: Math.max(1, Math.round(criteria.days)) * DAILY_LOAD_LIMITS[criteria.pace],
+  };
+}
+
+export function fitsTripLoad(
+  idea: Pick<TripIdea, "activityMinutes" | "driveSegmentMinutes">,
+  criteria: Pick<TripCompositionCriteria, "days" | "pace" | "travelingWithChildren">,
+  access: TripIdeaAccess,
+) {
+  const load = estimateTripLoadMinutes(idea, criteria, access);
+  return load.totalMinutes <= load.maximumMinutes;
+}
+
+/**
+ * A viable route should lose optional stops before it disappears entirely.
+ * The composer has already ordered stops by preference and family fit, so this
+ * keeps the strongest anchors that still fit the actual access time.
+ */
+export function fitTripIdeaToAccess(
+  idea: TripIdea,
+  criteria: Pick<TripCompositionCriteria, "days" | "pace" | "travelingWithChildren">,
+  access: TripIdeaAccess,
+): TripIdea | null {
+  const emptyIdea = { ...idea, stops: [], activityMinutes: 0 };
+  if (!fitsTripLoad(emptyIdea, criteria, access)) return null;
+
+  const stops: CatalogRouteStop[] = [];
+  let activityMinutes = 0;
+  for (const stop of idea.stops) {
+    const candidate = {
+      ...emptyIdea,
+      stops: [...stops, stop],
+      activityMinutes: activityMinutes + stop.typicalDurationMinutes,
+    };
+    if (!fitsTripLoad(candidate, criteria, access)) continue;
+    stops.push(stop);
+    activityMinutes += stop.typicalDurationMinutes;
+  }
+
+  return stops.length > 0 ? { ...idea, stops, activityMinutes } : null;
+}
+
 export function composeTripIdeas(
   catalog: RouteCatalog,
   criteria: TripCompositionCriteria,
@@ -176,13 +325,7 @@ export function composeTripIdeas(
   const driveBudgetMinutes = days * rules.driveMinutesPerDay;
   const candidates: Array<TripIdea & { score: number }> = [];
 
-  for (let startIndex = 0; startIndex < catalog.areas.length; startIndex += 1) {
-    for (
-      let endIndex = startIndex + minAreas - 1;
-      endIndex < catalog.areas.length && endIndex - startIndex + 1 <= maxAreas;
-      endIndex += 1
-    ) {
-      const selectedAreas = catalog.areas.slice(startIndex, endIndex + 1);
+  for (const { plan, selectedAreas } of sectionsForCriteria(catalog, criteria, minAreas, maxAreas)) {
       const selectedAreaIds = selectedAreas.map((area) => area.id);
       const selectedLegs: CatalogRouteLeg[] = [];
 
@@ -234,22 +377,21 @@ export function composeTripIdeas(
       const lastArea = selectedAreas.at(-1)!;
 
       candidates.push({
-        id: `${catalog.id}:${firstArea.id}:${lastArea.id}:${days}:${criteria.pace}`,
-        title:
-          firstArea.id === lastArea.id
-            ? firstArea.name
-            : `${firstArea.name} to ${lastArea.name}`,
+        id: `${catalog.id}:${plan?.id ?? `${firstArea.id}:${lastArea.id}`}:${days}:${criteria.pace}`,
+        planId: plan?.id,
+        title: plan?.name ?? (firstArea.id === lastArea.id ? firstArea.name : `${firstArea.name} to ${lastArea.name}`),
+        summary: plan?.summary,
         areaIds: selectedAreaIds,
         startArea: firstArea,
         endArea: lastArea,
         stops: selection.stops,
         distanceMiles,
         driveMinutes,
+        driveSegmentMinutes: selectedLegs.map((leg) => leg.driveMinutes),
         activityMinutes: selection.activityMinutes,
         matchedPreferences: matched,
         score,
       });
-    }
   }
 
   return candidates
@@ -260,13 +402,16 @@ export function composeTripIdeas(
     .slice(0, limit)
     .map((candidate) => ({
       id: candidate.id,
+      planId: candidate.planId,
       title: candidate.title,
+      summary: candidate.summary,
       areaIds: candidate.areaIds,
       startArea: candidate.startArea,
       endArea: candidate.endArea,
       stops: candidate.stops,
       distanceMiles: candidate.distanceMiles,
       driveMinutes: candidate.driveMinutes,
+      driveSegmentMinutes: candidate.driveSegmentMinutes,
       activityMinutes: candidate.activityMinutes,
       matchedPreferences: candidate.matchedPreferences,
     }));
