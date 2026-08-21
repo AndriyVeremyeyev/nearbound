@@ -1,5 +1,8 @@
+import { OREGON_COAST_ROUTE_ID } from "@/lib/catalog/catalog-routes";
+import { loadRouteCatalog } from "@/lib/catalog/repository";
 import { loadRoutableDestinations } from "@/lib/trips/repository";
 import {
+  calculateLiveRouteAccessEstimates,
   calculateLiveRouteEstimates,
   MapboxRouteError,
 } from "@/lib/trips/mapbox-routes";
@@ -29,14 +32,26 @@ export async function POST(request: Request) {
   }
 
   try {
-    const destinations = await loadRoutableDestinations();
-    const result = await calculateLiveRouteEstimates({
-      accessToken,
-      origin: body.origin,
-      destinations,
-    });
+    const [destinations, oregonCoastCatalog] = await Promise.all([
+      loadRoutableDestinations(),
+      loadRouteCatalog(OREGON_COAST_ROUTE_ID),
+    ]);
+    const [result, routeAccess] = await Promise.all([
+      calculateLiveRouteEstimates({
+        accessToken,
+        origin: body.origin,
+        destinations,
+      }),
+      oregonCoastCatalog
+        ? calculateLiveRouteAccessEstimates({
+            accessToken,
+            origin: body.origin,
+            areas: oregonCoastCatalog.areas,
+          })
+        : Promise.resolve([]),
+    ]);
 
-    return Response.json(result);
+    return Response.json({ ...result, routeAccess });
   } catch (error) {
     if (error instanceof MapboxRouteError) {
       return Response.json({ error: error.message }, { status: error.status });

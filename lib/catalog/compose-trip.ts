@@ -3,6 +3,8 @@ export type TripPace = "easy" | "balanced" | "see-more";
 export type CatalogRouteArea = {
   id: string;
   name: string;
+  latitude: number;
+  longitude: number;
 };
 
 export type CatalogRouteStop = {
@@ -40,6 +42,8 @@ export type TripIdea = {
   id: string;
   title: string;
   areaIds: string[];
+  startArea: CatalogRouteArea;
+  endArea: CatalogRouteArea;
   stops: CatalogRouteStop[];
   distanceMiles: number;
   driveMinutes: number;
@@ -224,6 +228,8 @@ export function composeTripIdeas(
             ? firstArea.name
             : `${firstArea.name} to ${lastArea.name}`,
         areaIds: selectedAreaIds,
+        startArea: firstArea,
+        endArea: lastArea,
         stops: selection.stops,
         distanceMiles,
         driveMinutes,
@@ -244,6 +250,8 @@ export function composeTripIdeas(
       id: candidate.id,
       title: candidate.title,
       areaIds: candidate.areaIds,
+      startArea: candidate.startArea,
+      endArea: candidate.endArea,
       stops: candidate.stops,
       distanceMiles: candidate.distanceMiles,
       driveMinutes: candidate.driveMinutes,

@@ -1,4 +1,5 @@
 import {
+  calculateLiveRouteAccessEstimates,
   calculateLiveRouteEstimates,
   MapboxRouteError,
 } from "./mapbox-routes";
@@ -19,11 +20,18 @@ describe("calculateLiveRouteEstimates", () => {
   it("maps one Matrix row to destinations from a confirmed origin", async () => {
     const fetcher = (jest
       .fn()
-      .mockResolvedValue(
+      .mockResolvedValueOnce(
         jsonResponse({
           code: "Ok",
-          durations: [[5400, null]],
-          distances: [[69420, null]],
+          durations: [[5400, 7200]],
+          distances: [[69420, 81234]],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: "Ok",
+          durations: [[5100], [6900]],
+          distances: [[68000], [80000]],
         }),
       ) as jest.MockedFunction<typeof fetch>);
 
@@ -39,7 +47,7 @@ describe("calculateLiveRouteEstimates", () => {
       now: () => new Date("2026-08-20T16:00:00.000Z"),
     });
 
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
     expect(String(fetcher.mock.calls[0][0])).toContain("sources=0");
     expect(result).toEqual({
       originLabel: "Issaquah, Washington, United States",
@@ -49,9 +57,69 @@ describe("calculateLiveRouteEstimates", () => {
           destinationId: "point-defiance",
           durationMinutes: 90,
           distanceMeters: 69420,
+          returnDurationMinutes: 85,
+          returnDistanceMeters: 68000,
+        },
+        {
+          destinationId: "bellingham",
+          durationMinutes: 120,
+          distanceMeters: 81234,
+          returnDurationMinutes: 115,
+          returnDistanceMeters: 80000,
         },
       ],
     });
+  });
+
+  it("calculates the route entry and route-home legs separately", async () => {
+    const fetcher = (jest
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: "Ok",
+          durations: [[7200, 9600]],
+          distances: [[115000, 150000]],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          code: "Ok",
+          durations: [[7500], [9900]],
+          distances: [[120000], [155000]],
+        }),
+      ) as jest.MockedFunction<typeof fetch>);
+
+    const result = await calculateLiveRouteAccessEstimates({
+      accessToken: "pk.test-token",
+      origin: { label: "Issaquah", latitude: 47.5301, longitude: -122.0326 },
+      areas: [
+        { id: "astoria", latitude: 46.1879, longitude: -123.8313 },
+        { id: "cannon-beach", latitude: 45.8918, longitude: -123.9615 },
+      ],
+      fetcher,
+    });
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(String(fetcher.mock.calls[0][0])).toContain("sources=0");
+    expect(String(fetcher.mock.calls[0][0])).toContain("destinations=1%3B2");
+    expect(String(fetcher.mock.calls[1][0])).toContain("sources=1%3B2");
+    expect(String(fetcher.mock.calls[1][0])).toContain("destinations=0");
+    expect(result).toEqual([
+      {
+        areaId: "astoria",
+        outboundMinutes: 120,
+        outboundDistanceMeters: 115000,
+        returnMinutes: 125,
+        returnDistanceMeters: 120000,
+      },
+      {
+        areaId: "cannon-beach",
+        outboundMinutes: 160,
+        outboundDistanceMeters: 150000,
+        returnMinutes: 165,
+        returnDistanceMeters: 155000,
+      },
+    ]);
   });
 
   it("rejects a catalog that exceeds one Matrix request", async () => {

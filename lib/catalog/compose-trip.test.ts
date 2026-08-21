@@ -4,10 +4,10 @@ const oregonCoastFixture: RouteCatalog = {
   id: "oregon-pacific-coast-byway",
   name: "Oregon Pacific Coast",
   areas: [
-    { id: "astoria", name: "Astoria" },
-    { id: "cannon", name: "Cannon Beach" },
-    { id: "newport", name: "Newport" },
-    { id: "yachats", name: "Yachats & Cape Perpetua" },
+    { id: "astoria", name: "Astoria", latitude: 46.1879, longitude: -123.8313 },
+    { id: "cannon", name: "Cannon Beach", latitude: 45.8918, longitude: -123.9615 },
+    { id: "newport", name: "Newport", latitude: 44.6368, longitude: -124.0535 },
+    { id: "yachats", name: "Yachats & Cape Perpetua", latitude: 44.291, longitude: -124.108 },
   ],
   legs: [
     { fromAreaId: "astoria", toAreaId: "cannon", distanceMiles: 27, driveMinutes: 40 },

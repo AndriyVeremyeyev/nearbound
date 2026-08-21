@@ -1,4 +1,5 @@
 import { loadDestinationCatalog, loadSavedOrigins, loadVisitedDestinationIds } from "@/lib/trips/repository";
+import { OREGON_COAST_ROUTE_ID } from "@/lib/catalog/catalog-routes";
 import { loadRouteCatalog } from "@/lib/catalog/repository";
 import { getCurrentUser } from "@/lib/auth-session";
 import { TripPlanner } from "./trip-planner";
@@ -26,7 +27,7 @@ function toSearchString(searchParams: Record<string, string | string[] | undefin
 export default async function Home({ searchParams }: HomeProps) {
   const [catalog, oregonCoastCatalog, currentUser] = await Promise.all([
     loadDestinationCatalog(),
-    loadRouteCatalog("oregon-pacific-coast-byway"),
+    loadRouteCatalog(OREGON_COAST_ROUTE_ID),
     getCurrentUser(),
   ]);
   const [visitedDestinationIds, savedOrigins] = currentUser

@@ -56,8 +56,8 @@ const oregonCoastCatalog: RouteCatalog = {
   id: "oregon-pacific-coast-byway",
   name: "Oregon Pacific Coast",
   areas: [
-    { id: "astoria", name: "Astoria" },
-    { id: "cannon-beach", name: "Cannon Beach" },
+    { id: "astoria", name: "Astoria", latitude: 46.1879, longitude: -123.8313 },
+    { id: "cannon-beach", name: "Cannon Beach", latitude: 45.8918, longitude: -123.9615 },
   ],
   legs: [
     { fromAreaId: "astoria", toAreaId: "cannon-beach", distanceMiles: 27, driveMinutes: 40 },
@@ -123,7 +123,41 @@ describe("Nearbound concept prototype", () => {
     expect(screen.getByText(/set the brief above, then select find my trips/i)).toBeInTheDocument();
   });
 
-  it("shows connected Oregon Coast ideas from the catalog after setup", () => {
+  it("shows connected Oregon Coast ideas after live route access is calculated", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        originLabel: "Issaquah, Washington, United States",
+        calculatedAt: "2026-08-21T16:00:00.000Z",
+        routes: [
+          {
+            destinationId: "point-defiance",
+            durationMinutes: 90,
+            distanceMeters: 69420,
+            returnDurationMinutes: 95,
+            returnDistanceMeters: 70000,
+          },
+        ],
+        routeAccess: [
+          {
+            areaId: "astoria",
+            outboundMinutes: 120,
+            outboundDistanceMeters: 160000,
+            returnMinutes: 125,
+            returnDistanceMeters: 165000,
+          },
+          {
+            areaId: "cannon-beach",
+            outboundMinutes: 140,
+            outboundDistanceMeters: 180000,
+            returnMinutes: 160,
+            returnDistanceMeters: 190000,
+          },
+        ],
+      }),
+    } as Response);
+    global.fetch = fetchMock as typeof fetch;
+
     render(
       <TripPlanner
         catalog={catalog}
@@ -133,12 +167,61 @@ describe("Nearbound concept prototype", () => {
     );
 
     completeWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
 
-    expect(
-      screen.getByRole("heading", { name: "Your trip ideas" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Astoria to Cannon Beach" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Astoria to Cannon Beach" })).toBeInTheDocument(),
+    );
+    expect(screen.getByText("2h to Astoria")).toBeInTheDocument();
+    expect(screen.getByText("2h 40m home from Cannon Beach")).toBeInTheDocument();
     expect(screen.getAllByText("Possible anchors")).not.toHaveLength(0);
+  });
+
+  it("does not show a route idea when the drive home exceeds the selected limit", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        originLabel: "Issaquah, Washington, United States",
+        calculatedAt: "2026-08-21T16:00:00.000Z",
+        routes: [
+          {
+            destinationId: "point-defiance",
+            durationMinutes: 90,
+            distanceMeters: 69420,
+            returnDurationMinutes: 95,
+            returnDistanceMeters: 70000,
+          },
+        ],
+        routeAccess: [
+          {
+            areaId: "astoria",
+            outboundMinutes: 120,
+            outboundDistanceMeters: 160000,
+            returnMinutes: 125,
+            returnDistanceMeters: 165000,
+          },
+          {
+            areaId: "cannon-beach",
+            outboundMinutes: 140,
+            outboundDistanceMeters: 180000,
+            returnMinutes: 220,
+            returnDistanceMeters: 250000,
+          },
+        ],
+      }),
+    } as Response);
+    global.fetch = fetchMock as typeof fetch;
+
+    render(<TripPlanner catalog={catalog} oregonCoastCatalog={oregonCoastCatalog} />);
+    completeWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Find my trips" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(/live drive times from Issaquah, Washington/i),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("heading", { name: "Astoria to Cannon Beach" })).not.toBeInTheDocument();
   });
 
   it("applies route-logistics changes only after the trip brief is submitted", async () => {
@@ -250,7 +333,7 @@ describe("Nearbound concept prototype", () => {
     );
 
     expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
-    expect(screen.getByLabelText("Maximum drive time in hours")).toHaveValue("1.5");
+    expect(screen.getByLabelText("Maximum one-way drive time in hours")).toHaveValue("1.5");
     expect(screen.getByRole("button", { name: "Day trip" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "City" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("Traveling with children")).not.toBeChecked();
@@ -320,6 +403,8 @@ describe("Nearbound concept prototype", () => {
             destinationId: "point-defiance",
             durationMinutes: 90,
             distanceMeters: 69420,
+            returnDurationMinutes: 95,
+            returnDistanceMeters: 70000,
           },
         ],
       }),
@@ -395,6 +480,8 @@ describe("Nearbound concept prototype", () => {
               destinationId: "point-defiance",
               durationMinutes: 56,
               distanceMeters: 56100,
+              returnDurationMinutes: 60,
+              returnDistanceMeters: 60000,
             },
           ],
         }),

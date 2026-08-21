@@ -207,15 +207,27 @@ export function TripPlanner({
       ),
     [liveRouteResult],
   );
+  const liveRouteAccessByAreaId = useMemo(
+    () =>
+      new Map(
+        (liveRouteResult?.routeAccess ?? []).map((access) => [
+          access.areaId,
+          access,
+        ]),
+      ),
+    [liveRouteResult],
+  );
   const destinationsWithCurrentRoutes = useMemo(
     () =>
-      destinations.map((destination) => {
+      destinations.flatMap((destination) => {
         const route = liveRoutesByDestinationId.get(destination.id);
-        return route
-          ? { ...destination, hours: route.durationMinutes / 60 }
-          : destination;
+        if (!route) return [destination];
+        if (route.returnDurationMinutes > appliedPlannerState.maxDriveHours * 60) {
+          return [];
+        }
+        return [{ ...destination, hours: route.durationMinutes / 60 }];
       }),
-    [destinations, liveRoutesByDestinationId],
+    [appliedPlannerState.maxDriveHours, destinations, liveRoutesByDestinationId],
   );
   const destinationsReadyForTripLength = useMemo(
     () =>
@@ -234,48 +246,71 @@ export function TripPlanner({
     [destinationsReadyForTripLength, appliedPlannerState, visitedDestinationIds],
   );
   const oregonCoastIdeas = useMemo(
-    () =>
-      oregonCoastCatalog
-        ? composeTripIdeas(oregonCoastCatalog, {
-            days: appliedPlannerState.days,
-            pace: appliedPlannerState.pace,
-            preferences: appliedPlannerState.preferences,
-            travelingWithChildren: appliedPlannerState.travelingWithChildren,
-          })
-        : [],
-    [appliedPlannerState, oregonCoastCatalog],
+    () => {
+      if (!oregonCoastCatalog || !liveRouteResult) return [];
+
+      const maximumTravelDayMinutes = appliedPlannerState.maxDriveHours * 60;
+      return composeTripIdeas(oregonCoastCatalog, {
+        days: appliedPlannerState.days,
+        pace: appliedPlannerState.pace,
+        preferences: appliedPlannerState.preferences,
+        travelingWithChildren: appliedPlannerState.travelingWithChildren,
+      }).flatMap((idea) => {
+        const outboundAccess = liveRouteAccessByAreaId.get(idea.startArea.id);
+        const returnAccess = liveRouteAccessByAreaId.get(idea.endArea.id);
+
+        if (
+          !outboundAccess ||
+          !returnAccess ||
+          outboundAccess.outboundMinutes > maximumTravelDayMinutes ||
+          returnAccess.returnMinutes > maximumTravelDayMinutes
+        ) {
+          return [];
+        }
+
+        return [{ idea, outboundAccess, returnAccess }];
+      });
+    },
+    [appliedPlannerState, liveRouteAccessByAreaId, liveRouteResult, oregonCoastCatalog],
   );
   const tripIdeas = useMemo<PlannerTripIdea[]>(() => {
-    const destinationIdeas = ranked.map((destination) => ({
-      id: `destination:${destination.id}`,
-      context: destination.region,
-      title: destination.name,
-      summary: destination.summary,
-      facts: [
-        `${formatDriveTime(destination.hours)} from your start`,
-        ...destination.preferences
-          .slice(0, 2)
-          .map((preference) => formatPreference(preference)),
-      ],
-      matchReasons: destination.matchReasons,
-      anchors: destination.anchor,
-      source: destination.sourceReferences[0]?.url
-        ? {
-            title: destination.sourceReferences[0].title,
-            url: destination.sourceReferences[0].url,
-          }
-        : undefined,
-      destinationId: destination.id,
-    }));
-    const routeIdeas = oregonCoastIdeas.map((idea) => ({
+    const destinationIdeas = ranked.map((destination) => {
+      const liveRoute = liveRoutesByDestinationId.get(destination.id);
+      return {
+        id: `destination:${destination.id}`,
+        context: destination.region,
+        title: destination.name,
+        summary: destination.summary,
+        facts: [
+          `${formatDriveTime(destination.hours)} from your start`,
+          ...(liveRoute
+            ? [`${formatDriveTime(liveRoute.returnDurationMinutes / 60)} home`]
+            : []),
+          ...destination.preferences
+            .slice(0, 2)
+            .map((preference) => formatPreference(preference)),
+        ],
+        matchReasons: destination.matchReasons,
+        anchors: destination.anchor,
+        source: destination.sourceReferences[0]?.url
+          ? {
+              title: destination.sourceReferences[0].title,
+              url: destination.sourceReferences[0].url,
+            }
+          : undefined,
+        destinationId: destination.id,
+      };
+    });
+    const routeIdeas = oregonCoastIdeas.map(({ idea, outboundAccess, returnAccess }) => ({
       id: `route:${idea.id}`,
       context: "Oregon Coast",
       title: idea.title,
       summary: "A connected stretch of coast with room to choose the stops that suit the day.",
       facts: [
-        `${idea.areaIds.length} areas`,
-        `${idea.stops.length} possible stops`,
+        `${idea.areaIds.length} areas · ${idea.stops.length} stops`,
+        `${formatDriveTime(outboundAccess.outboundMinutes / 60)} to ${idea.startArea.name}`,
         `${formatDriveTime(idea.driveMinutes / 60)} moving between areas`,
+        `${formatDriveTime(returnAccess.returnMinutes / 60)} home from ${idea.endArea.name}`,
       ],
       matchReasons: idea.matchedPreferences.length
         ? [`Includes ${idea.matchedPreferences.map(formatPreference).join(" and ")}.`]
@@ -286,7 +321,7 @@ export function TripPlanner({
     return appliedPlannerState.days >= 2
       ? [...routeIdeas, ...destinationIdeas]
       : destinationIdeas;
-  }, [appliedPlannerState.days, oregonCoastIdeas, ranked]);
+  }, [appliedPlannerState.days, liveRoutesByDestinationId, oregonCoastIdeas, ranked]);
   const visibleTripIdeas = showAllIdeas ? tripIdeas : tripIdeas.slice(0, 3);
 
   const topResults = ranked.slice(0, 5);
@@ -539,7 +574,7 @@ export function TripPlanner({
 
           <div className="radius-block">
             <div className="label-line">
-              <span className="field-label">Maximum drive</span>
+              <span className="field-label">Getting there</span>
               <strong>{radius.toFixed(1)} hours</strong>
             </div>
             <input
@@ -555,9 +590,12 @@ export function TripPlanner({
                   value: Number(event.target.value),
                 })
               }
-              aria-label="Maximum drive time in hours"
+              aria-label="Maximum one-way drive time in hours"
             />
             <div className="range-labels" aria-hidden="true"><span>1 hour</span><span>6 hours</span></div>
+            <p className="drive-guidance">
+              Maximum one-way drive from your starting point to begin the trip. We also check the drive home.
+            </p>
           </div>
 
           <div className="days-block">
@@ -670,7 +708,7 @@ export function TripPlanner({
               <span className="map-kicker">{hasPendingChanges ? "Current results" : liveRouteResult ? "Live driving times" : "Your search area"}</span>
               <strong>{topResults.length} strong matches near {mapOriginLabel}</strong>
             </div>
-            <span className="map-scale">≈ {appliedDriveHours.toFixed(1)}h drive</span>
+            <span className="map-scale">≈ {appliedDriveHours.toFixed(1)}h getting there</span>
           </div>
 
           <InteractiveMap

@@ -25,6 +25,8 @@ export async function loadRouteCatalog(
       .select({
         id: areas.id,
         name: areas.name,
+        latitude: areas.latitude,
+        longitude: areas.longitude,
         position: routeWaypoints.position,
       })
       .from(routeWaypoints)
@@ -98,7 +100,11 @@ export async function loadRouteCatalog(
   return {
     id: route.id,
     name: route.name,
-    areas: areaRows.map(({ id, name }) => ({ id, name })),
+    areas: areaRows.flatMap(({ id, name, latitude, longitude }) =>
+      latitude === null || longitude === null
+        ? []
+        : [{ id, name, latitude, longitude }],
+    ),
     stops: [...stopsById.values()],
     legs: legRows,
   };

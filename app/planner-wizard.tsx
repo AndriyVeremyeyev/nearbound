@@ -228,7 +228,7 @@ export function PlannerWizard({
 
               <div className="wizard-drive-control">
                 <div className="label-line">
-                  <label className="field-label" htmlFor="wizard-drive-time">Maximum drive</label>
+                  <label className="field-label" htmlFor="wizard-drive-time">Getting there</label>
                   <strong>{state.maxDriveHours.toFixed(1)} hours</strong>
                 </div>
                 <input
@@ -250,6 +250,9 @@ export function PlannerWizard({
                   <span>1 hour</span>
                   <span>6 hours</span>
                 </div>
+                <p className="wizard-field-note">
+                  Maximum one-way drive from your starting point to begin the trip. We also check the drive home.
+                </p>
               </div>
             </div>
           )}
