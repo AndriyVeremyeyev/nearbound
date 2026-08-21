@@ -459,6 +459,61 @@ export const catalogSources = pgTable(
   ],
 );
 
+export const routes = pgTable(
+  "routes",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    shape: text("shape").notNull(),
+    countryCode: text("country_code").notNull(),
+    minDays: integer("min_days").notNull(),
+    maxDays: integer("max_days").notNull(),
+    summary: text("summary").notNull(),
+    published: boolean("published").notNull().default(false),
+    lastVerifiedAt: date("last_verified_at"),
+    reviewDueAt: date("review_due_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("routes_shape_check", sql`${table.shape} in ('linear', 'loop')`),
+    check("routes_min_days_check", sql`${table.minDays} between 1 and 14`),
+    check("routes_max_days_check", sql`${table.maxDays} between 1 and 14`),
+    check("routes_day_range_check", sql`${table.minDays} <= ${table.maxDays}`),
+    check(
+      "routes_review_due_after_verification_check",
+      sql`${table.reviewDueAt} is null or ${table.lastVerifiedAt} is null or ${table.reviewDueAt} >= ${table.lastVerifiedAt}`,
+    ),
+  ],
+);
+
+export const routeWaypoints = pgTable(
+  "route_waypoints",
+  {
+    routeId: text("route_id").notNull().references(() => routes.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    areaId: text("area_id").references(() => areas.id, { onDelete: "cascade" }),
+    stopId: text("stop_id").references(() => stops.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    optional: boolean("optional").notNull().default(false),
+  },
+  (table) => [
+    primaryKey({ columns: [table.routeId, table.position] }),
+    index("route_waypoints_area_id_idx").on(table.areaId),
+    index("route_waypoints_stop_id_idx").on(table.stopId),
+    check("route_waypoints_position_check", sql`${table.position} > 0`),
+    check(
+      "route_waypoints_one_subject_check",
+      sql`(${table.areaId} is not null and ${table.stopId} is null) or (${table.areaId} is null and ${table.stopId} is not null)`,
+    ),
+    check(
+      "route_waypoints_role_check",
+      sql`${table.role} in ('gateway', 'overnight', 'anchor', 'detour')`,
+    ),
+  ],
+);
+
 export const catalogEvidence = pgTable(
   "catalog_evidence",
   {
@@ -468,6 +523,7 @@ export const catalogEvidence = pgTable(
       .references(() => catalogSources.id, { onDelete: "cascade" }),
     areaId: text("area_id").references(() => areas.id, { onDelete: "cascade" }),
     stopId: text("stop_id").references(() => stops.id, { onDelete: "cascade" }),
+    routeId: text("route_id").references(() => routes.id, { onDelete: "cascade" }),
     claimType: text("claim_type").notNull(),
     note: text("note").notNull(),
     confidence: text("confidence").notNull(),
@@ -480,9 +536,10 @@ export const catalogEvidence = pgTable(
     index("catalog_evidence_source_id_idx").on(table.sourceId),
     index("catalog_evidence_area_id_idx").on(table.areaId),
     index("catalog_evidence_stop_id_idx").on(table.stopId),
+    index("catalog_evidence_route_id_idx").on(table.routeId),
     check(
       "catalog_evidence_one_subject_check",
-      sql`(${table.areaId} is not null and ${table.stopId} is null) or (${table.areaId} is null and ${table.stopId} is not null)`,
+      sql`(${table.areaId} is not null and ${table.stopId} is null and ${table.routeId} is null) or (${table.areaId} is null and ${table.stopId} is not null and ${table.routeId} is null) or (${table.areaId} is null and ${table.stopId} is null and ${table.routeId} is not null)`,
     ),
     check("catalog_evidence_confidence_check", sql`${table.confidence} in ('low', 'medium', 'high')`),
     check(
