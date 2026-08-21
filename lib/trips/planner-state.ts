@@ -1,10 +1,12 @@
 import type { Preference, TripCriteria } from "./types";
+import type { TripPace } from "@/lib/catalog/compose-trip";
 
 export type PlannerState = {
   originQuery: string;
   maxDriveHours: number;
   travelingWithChildren: boolean;
   days: number;
+  pace: TripPace;
   preferences: Preference[];
   allowFerryRoutes: boolean;
   allowBorderCrossings: boolean;
@@ -16,6 +18,7 @@ export type PlannerAction =
   | { type: "set-max-drive-hours"; value: number }
   | { type: "set-traveling-with-children"; value: boolean }
   | { type: "set-days"; value: number }
+  | { type: "set-pace"; value: TripPace }
   | { type: "toggle-preference"; preference: Preference }
   | { type: "set-allow-ferry-routes"; value: boolean }
   | { type: "set-allow-border-crossings"; value: boolean }
@@ -37,6 +40,7 @@ export function createInitialPlannerState(): PlannerState {
     maxDriveHours: 3,
     travelingWithChildren: true,
     days: 2,
+    pace: "balanced",
     preferences: ["animals", "ocean"],
     allowFerryRoutes: true,
     allowBorderCrossings: true,
@@ -71,6 +75,8 @@ export function plannerReducer(
           PLANNER_LIMITS.days.max,
         ),
       };
+    case "set-pace":
+      return { ...state, pace: action.value };
     case "toggle-preference":
       return {
         ...state,

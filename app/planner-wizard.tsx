@@ -58,6 +58,22 @@ const dayOptions = [
   { value: 4, label: "4 days" },
 ] as const;
 
+function getPaceOptions(days: number) {
+  if (days === 1) {
+    return [
+      { value: "easy", label: "Take it easy", detail: "One main plan, room to wander" },
+      { value: "balanced", label: "Balanced", detail: "A full day with a couple of moments" },
+      { value: "see-more", label: "See more", detail: "Fit in a little more before heading home" },
+    ] as const;
+  }
+
+  return [
+    { value: "easy", label: "Take it easy", detail: "Fewer stops, more room to wander" },
+    { value: "balanced", label: "Balanced", detail: "A few strong moments, without rushing" },
+    { value: "see-more", label: "See more", detail: "Cover more ground while you are away" },
+  ] as const;
+}
+
 export function PlannerWizard({
   state,
   preferenceOptions,
@@ -187,6 +203,24 @@ export function PlannerWizard({
                     >
                       <strong>{option.value}</strong>
                       <span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset className="wizard-fieldset wizard-pace-fieldset">
+                <legend className="field-label">Trip pace</legend>
+                <div className="wizard-pace-options">
+                  {getPaceOptions(state.days).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={state.pace === option.value ? "active" : ""}
+                      aria-pressed={state.pace === option.value}
+                      onClick={() => dispatch({ type: "set-pace", value: option.value })}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.detail}</span>
                     </button>
                   ))}
                 </div>

@@ -1,4 +1,5 @@
 import { loadDestinationCatalog, loadSavedOrigins, loadVisitedDestinationIds } from "@/lib/trips/repository";
+import { loadRouteCatalog } from "@/lib/catalog/repository";
 import { getCurrentUser } from "@/lib/auth-session";
 import { TripPlanner } from "./trip-planner";
 
@@ -23,8 +24,9 @@ function toSearchString(searchParams: Record<string, string | string[] | undefin
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const [catalog, currentUser] = await Promise.all([
+  const [catalog, oregonCoastCatalog, currentUser] = await Promise.all([
     loadDestinationCatalog(),
+    loadRouteCatalog("oregon-pacific-coast-byway"),
     getCurrentUser(),
   ]);
   const [visitedDestinationIds, savedOrigins] = currentUser
@@ -38,6 +40,7 @@ export default async function Home({ searchParams }: HomeProps) {
   return (
     <TripPlanner
       catalog={catalog}
+      oregonCoastCatalog={oregonCoastCatalog}
       currentUser={currentUser}
       initialVisitedDestinationIds={visitedDestinationIds}
       savedOrigins={savedOrigins}

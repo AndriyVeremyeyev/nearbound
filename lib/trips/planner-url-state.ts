@@ -4,9 +4,11 @@ import {
   type PlannerState,
 } from "./planner-state";
 import type { Preference } from "./types";
+import type { TripPace } from "@/lib/catalog/compose-trip";
 
 const plannerParameterNames = [
   "days",
+  "pace",
   "drive",
   "interests",
   "children",
@@ -23,6 +25,8 @@ const supportedPreferences: readonly Preference[] = [
   "mountains",
   "forest",
 ];
+
+const supportedPaces: readonly TripPace[] = ["easy", "balanced", "see-more"];
 
 function readBoolean(value: string | null) {
   if (value === "1") return true;
@@ -82,6 +86,12 @@ export function readPlannerStateFromSearch(search: string): PlannerState | null 
     hasValidPlannerParameter = true;
   }
 
+  const pace = parameters.get("pace");
+  if (pace !== null && supportedPaces.includes(pace as TripPace)) {
+    state.pace = pace as TripPace;
+    hasValidPlannerParameter = true;
+  }
+
   const booleanParameters = [
     ["children", "travelingWithChildren"],
     ["ferry", "allowFerryRoutes"],
@@ -111,6 +121,7 @@ export function writePlannerSearch(
   }
 
   parameters.set("days", String(state.days));
+  parameters.set("pace", state.pace);
   parameters.set("drive", String(state.maxDriveHours));
   parameters.set("interests", state.preferences.join(","));
   parameters.set("children", state.travelingWithChildren ? "1" : "0");

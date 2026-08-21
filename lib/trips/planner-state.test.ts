@@ -15,6 +15,7 @@ describe("plannerReducer", () => {
       maxDriveHours: 3,
       travelingWithChildren: true,
       days: 2,
+      pace: "balanced",
       preferences: ["animals", "ocean"],
       allowFerryRoutes: true,
       allowBorderCrossings: true,
@@ -48,6 +49,15 @@ describe("plannerReducer", () => {
     expect(withoutChildren.travelingWithChildren).toBe(false);
     expect(withoutChildren).not.toHaveProperty("adults");
     expect(withoutChildren).not.toHaveProperty("children");
+  });
+
+  it("keeps trip pace as a planning choice for route composition", () => {
+    const state = plannerReducer(createInitialPlannerState(), {
+      type: "set-pace",
+      value: "see-more",
+    });
+
+    expect(state.pace).toBe("see-more");
   });
 
   it("keeps numeric answers inside the supported MVP limits", () => {

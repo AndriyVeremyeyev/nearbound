@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import type { DestinationCatalog } from "@/lib/trips/types";
+import type { RouteCatalog } from "@/lib/catalog/compose-trip";
 import { TripPlanner } from "./trip-planner";
 
 jest.mock("next/navigation", () => ({
@@ -51,6 +52,22 @@ const catalog: DestinationCatalog = {
   ],
 };
 
+const oregonCoastCatalog: RouteCatalog = {
+  id: "oregon-pacific-coast-byway",
+  name: "Oregon Pacific Coast",
+  areas: [
+    { id: "astoria", name: "Astoria" },
+    { id: "cannon-beach", name: "Cannon Beach" },
+  ],
+  legs: [
+    { fromAreaId: "astoria", toAreaId: "cannon-beach", distanceMiles: 27, driveMinutes: 40 },
+  ],
+  stops: [
+    { id: "museum", areaId: "astoria", name: "Maritime Museum", typicalDurationMinutes: 120, childFit: "good", preferences: ["city", "ocean"] },
+    { id: "haystack", areaId: "cannon-beach", name: "Haystack Rock", typicalDurationMinutes: 75, childFit: "good", preferences: ["ocean", "animals"] },
+  ],
+};
+
 function completeWizard() {
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -89,15 +106,14 @@ describe("Nearbound concept prototype", () => {
     completeWizard();
 
     expect(
-      screen.getByRole("heading", { name: "Your best fits" }),
+      screen.getByRole("heading", { name: "Your trip ideas" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText(/allow ferries/i)).toBeChecked();
     expect(screen.getByLabelText(/allow borders/i)).toBeChecked();
-    expect(screen.getByText("Why this ranks here")).toBeInTheDocument();
+    expect(screen.getByText("Why this fits")).toBeInTheDocument();
     expect(
       screen.getByText(/matches all selected experiences: animals and ocean/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("trip match")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Open details for Point Defiance" }),
     ).toBeInTheDocument();
@@ -105,6 +121,24 @@ describe("Nearbound concept prototype", () => {
       screen.getByRole("link", { name: /point defiance zoo & aquarium/i }),
     ).toHaveAttribute("href", "https://www.pdza.org/");
     expect(screen.getByText(/set the brief above, then select find my trips/i)).toBeInTheDocument();
+  });
+
+  it("shows connected Oregon Coast ideas from the catalog after setup", () => {
+    render(
+      <TripPlanner
+        catalog={catalog}
+        oregonCoastCatalog={oregonCoastCatalog}
+        initialSearch={window.location.search}
+      />,
+    );
+
+    completeWizard();
+
+    expect(
+      screen.getByRole("heading", { name: "Your trip ideas" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Astoria to Cannon Beach" })).toBeInTheDocument();
+    expect(screen.getAllByText("Possible anchors")).not.toHaveLength(0);
   });
 
   it("applies route-logistics changes only after the trip brief is submitted", async () => {
@@ -130,7 +164,7 @@ describe("Nearbound concept prototype", () => {
 
     await waitFor(() => expect(
       screen.getByRole("heading", {
-        name: "No destination fits every active constraint.",
+        name: "No trip idea fits every active constraint.",
       }),
     ).toBeInTheDocument());
     expect(screen.getByText(/filtered: 1 ferry route/i)).toBeInTheDocument();
@@ -189,7 +223,7 @@ describe("Nearbound concept prototype", () => {
     expect(skipButton.parentElement).toHaveClass("wizard-heading-bar");
     fireEvent.click(skipButton);
     expect(
-      screen.getByRole("heading", { name: "Your best fits" }),
+      screen.getByRole("heading", { name: "Your trip ideas" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Starting point")).toHaveValue(
       "Bellingham, WA",
@@ -212,7 +246,7 @@ describe("Nearbound concept prototype", () => {
     render(<TripPlanner catalog={catalog} initialSearch={window.location.search} />);
 
     await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Your best fits" })).toBeInTheDocument(),
+      expect(screen.getByRole("heading", { name: "Your trip ideas" })).toBeInTheDocument(),
     );
 
     expect(screen.getByLabelText("Starting point")).toHaveValue("Issaquah, WA");
@@ -306,7 +340,7 @@ describe("Nearbound concept prototype", () => {
       "/api/route-estimates",
       expect.objectContaining({ method: "POST" }),
     );
-    expect(screen.getByText("1h 30m drive")).toBeInTheDocument();
+    expect(screen.getByText("1h 30m from your start")).toBeInTheDocument();
   });
 
   it("does not route an edited starting point until a suggestion is confirmed", () => {

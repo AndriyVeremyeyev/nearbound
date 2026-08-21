@@ -14,6 +14,7 @@ import {
   readPlannerStateFromSearch,
   writePlannerSearch,
 } from "@/lib/trips/planner-url-state";
+import { composeTripIdeas, type RouteCatalog } from "@/lib/catalog/compose-trip";
 import type {
   DestinationCatalog,
   ExcludedDestination,
@@ -34,6 +35,7 @@ import { InteractiveMap } from "./interactive-map";
 
 type TripPlannerProps = {
   catalog: DestinationCatalog;
+  oregonCoastCatalog?: RouteCatalog | null;
   currentUser?: CurrentUser | null;
   initialVisitedDestinationIds?: readonly string[];
   savedOrigins?: readonly SavedOrigin[];
@@ -47,6 +49,22 @@ const dayOptions = [
   { value: 3, label: "3 days" },
   { value: 4, label: "4 days" },
 ];
+
+function getPaceOptions(days: number) {
+  if (days === 1) {
+    return [
+      { value: "easy", label: "Take it easy", detail: "One main plan, room to wander" },
+      { value: "balanced", label: "Balanced", detail: "A full day with a couple of moments" },
+      { value: "see-more", label: "See more", detail: "Fit in a little more" },
+    ] as const;
+  }
+
+  return [
+    { value: "easy", label: "Take it easy", detail: "Fewer stops, more room" },
+    { value: "balanced", label: "Balanced", detail: "A few strong moments" },
+    { value: "see-more", label: "See more", detail: "Cover more ground" },
+  ] as const;
+}
 
 const exclusionLabels: Record<
   ExclusionReason,
@@ -69,6 +87,12 @@ function formatDriveTime(hours: number) {
   const whole = Math.floor(hours);
   const minutes = Math.round((hours - whole) * 60);
   return `${whole}h ${minutes ? `${minutes}m` : ""}`.trim();
+}
+
+function formatPreference(preference: string) {
+  return preference
+    .replaceAll("-", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function formatExclusionSummary(exclusions: readonly ExcludedDestination[]) {
@@ -101,6 +125,18 @@ type LiveRouteState = {
 
 type RouteStatus = "idle" | "loading" | "success" | "error";
 
+type PlannerTripIdea = {
+  id: string;
+  context: string;
+  title: string;
+  summary: string;
+  facts: string[];
+  matchReasons: string[];
+  anchors: string;
+  source?: { title: string; url: string };
+  destinationId?: string;
+};
+
 const defaultOrigin: ResolvedOrigin = {
   label: "Issaquah, Washington, United States",
   latitude: 47.5301,
@@ -109,6 +145,7 @@ const defaultOrigin: ResolvedOrigin = {
 
 export function TripPlanner({
   catalog,
+  oregonCoastCatalog = null,
   currentUser = null,
   initialVisitedDestinationIds = [],
   savedOrigins = [],
@@ -136,6 +173,7 @@ export function TripPlanner({
   const [liveRouteState, setLiveRouteState] = useState<LiveRouteState | null>(null);
   const [routeStatus, setRouteStatus] = useState<RouteStatus>("idle");
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [showAllIdeas, setShowAllIdeas] = useState(false);
   const [confirmedOrigin, setConfirmedOrigin] = useState<ResolvedOrigin>(defaultOrigin);
   const [confirmedOriginQuery, setConfirmedOriginQuery] = useState("Issaquah, WA");
   const [appliedOrigin, setAppliedOrigin] = useState<ResolvedOrigin>(defaultOrigin);
@@ -144,6 +182,7 @@ export function TripPlanner({
     maxDriveHours: radius,
     travelingWithChildren,
     days,
+    pace,
     preferences,
     allowFerryRoutes,
     allowBorderCrossings,
@@ -178,15 +217,77 @@ export function TripPlanner({
       }),
     [destinations, liveRoutesByDestinationId],
   );
+  const destinationsReadyForTripLength = useMemo(
+    () =>
+      appliedPlannerState.days >= 3
+        ? destinationsWithCurrentRoutes.filter((destination) => destination.minDays >= 3)
+        : destinationsWithCurrentRoutes,
+    [appliedPlannerState.days, destinationsWithCurrentRoutes],
+  );
 
   const { recommendations: ranked, exclusions } = useMemo(
     () =>
       recommendDestinations(
-        destinationsWithCurrentRoutes,
+        destinationsReadyForTripLength,
         toTripCriteria(appliedPlannerState, visitedDestinationIds),
       ),
-    [destinationsWithCurrentRoutes, appliedPlannerState, visitedDestinationIds],
+    [destinationsReadyForTripLength, appliedPlannerState, visitedDestinationIds],
   );
+  const oregonCoastIdeas = useMemo(
+    () =>
+      oregonCoastCatalog
+        ? composeTripIdeas(oregonCoastCatalog, {
+            days: appliedPlannerState.days,
+            pace: appliedPlannerState.pace,
+            preferences: appliedPlannerState.preferences,
+            travelingWithChildren: appliedPlannerState.travelingWithChildren,
+          })
+        : [],
+    [appliedPlannerState, oregonCoastCatalog],
+  );
+  const tripIdeas = useMemo<PlannerTripIdea[]>(() => {
+    const destinationIdeas = ranked.map((destination) => ({
+      id: `destination:${destination.id}`,
+      context: destination.region,
+      title: destination.name,
+      summary: destination.summary,
+      facts: [
+        `${formatDriveTime(destination.hours)} from your start`,
+        ...destination.preferences
+          .slice(0, 2)
+          .map((preference) => formatPreference(preference)),
+      ],
+      matchReasons: destination.matchReasons,
+      anchors: destination.anchor,
+      source: destination.sourceReferences[0]?.url
+        ? {
+            title: destination.sourceReferences[0].title,
+            url: destination.sourceReferences[0].url,
+          }
+        : undefined,
+      destinationId: destination.id,
+    }));
+    const routeIdeas = oregonCoastIdeas.map((idea) => ({
+      id: `route:${idea.id}`,
+      context: "Oregon Coast",
+      title: idea.title,
+      summary: "A connected stretch of coast with room to choose the stops that suit the day.",
+      facts: [
+        `${idea.areaIds.length} areas`,
+        `${idea.stops.length} possible stops`,
+        `${formatDriveTime(idea.driveMinutes / 60)} moving between areas`,
+      ],
+      matchReasons: idea.matchedPreferences.length
+        ? [`Includes ${idea.matchedPreferences.map(formatPreference).join(" and ")}.`]
+        : ["Built as a connected coastal option."],
+      anchors: idea.stops.slice(0, 3).map((stop) => stop.name).join(" · "),
+    }));
+
+    return appliedPlannerState.days >= 2
+      ? [...routeIdeas, ...destinationIdeas]
+      : destinationIdeas;
+  }, [appliedPlannerState.days, oregonCoastIdeas, ranked]);
+  const visibleTripIdeas = showAllIdeas ? tripIdeas : tripIdeas.slice(0, 3);
 
   const topResults = ranked.slice(0, 5);
   const selected = ranked.find((destination) => destination.id === selectedId) ?? topResults[0];
@@ -232,6 +333,7 @@ export function TripPlanner({
     }
 
     setAppliedPlannerState(plannerState);
+    setShowAllIdeas(false);
     setAppliedOrigin(confirmedOrigin);
     setRouteStatus("loading");
     setRouteError(null);
@@ -284,6 +386,7 @@ export function TripPlanner({
 
   function completeWizard() {
     setAppliedPlannerState(plannerState);
+    setShowAllIdeas(false);
     setAppliedOrigin(confirmedOrigin);
     setHasShareableState(true);
     setShowWizard(false);
@@ -474,6 +577,20 @@ export function TripPlanner({
                 </button>
               ))}
             </div>
+            <div className="pace-options" aria-label="Trip pace">
+              {getPaceOptions(days).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={pace === option.value ? "active" : ""}
+                  aria-pressed={pace === option.value}
+                  onClick={() => dispatch({ type: "set-pace", value: option.value })}
+                >
+                  <strong>{option.label}</strong>
+                  <small>{option.detail}</small>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="preferences-block">
@@ -583,93 +700,81 @@ export function TripPlanner({
       <section className="results-section" id="matches">
         <div className="results-heading">
           <div>
-            <p className="eyebrow">Ranked for your real constraints</p>
-            <h2>Your best fits</h2>
+            <p className="eyebrow">Built around your brief</p>
+            <h2>Your trip ideas</h2>
           </div>
           <p>
-            Every option already fits your hard constraints. Experience match, drive-time margin, family fit,
-            weather backup, and route simplicity decide the order.
+            Compare concrete ways to spend the time — a focused place, a coastal stretch, or a longer stay.
           </p>
         </div>
 
         <div className="results-grid">
-          {topResults.slice(0, 3).map((destination, index) => (
+          {visibleTripIdeas.map((idea) => (
             <article
-              className={`result-card ${selected?.id === destination.id ? "selected" : ""}`}
-              id={`result-${destination.id}`}
-              key={destination.id}
-              onMouseEnter={() => setSelectedId(destination.id)}
+              className={`trip-idea-card ${idea.destinationId && selected?.id === idea.destinationId ? "selected" : ""}`}
+              id={`idea-${idea.id}`}
+              key={idea.id}
+              onMouseEnter={() => {
+                if (idea.destinationId) setSelectedId(idea.destinationId);
+              }}
               onClick={(event) => {
+                if (!idea.destinationId) return;
                 if (event.target instanceof Element && event.target.closest("a")) return;
-                openDestination(destination.id);
+                openDestination(idea.destinationId);
               }}
               onKeyDown={(event) => {
+                if (!idea.destinationId) return;
                 if (event.target !== event.currentTarget) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  openDestination(destination.id);
+                  openDestination(idea.destinationId);
                 }
               }}
-              role="link"
-              tabIndex={0}
-              aria-label={`Open details for ${destination.name}`}
+              role={idea.destinationId ? "link" : undefined}
+              tabIndex={idea.destinationId ? 0 : undefined}
+              aria-label={idea.destinationId ? `Open details for ${idea.title}` : undefined}
             >
-              <div className="result-rank">0{index + 1}</div>
               <div className="result-title-row">
                 <div>
-                  <p>{destination.region}</p>
-                  <h3>{destination.name}</h3>
-                </div>
-                <div
-                  className="result-score"
-                  aria-label={`${destination.score} out of 100 trip match`}
-                >
-                  <strong>{destination.score}</strong><span>/100</span>
+                  <p>{idea.context}</p>
+                  <h3>{idea.title}</h3>
                 </div>
               </div>
-              <p className="result-summary">{destination.summary}</p>
+              <p className="result-summary">{idea.summary}</p>
               <div className="tag-row">
-                <span>{formatDriveTime(destination.hours)} drive</span>
-                <span>{destination.minDays === 1 && destination.maxDays <= 2 ? "Day-trip friendly" : `${destination.minDays}–${destination.maxDays} days`}</span>
-                {destination.usesFerry && <span>Ferry route</span>}
-                {destination.crossesBorder && <span>Border crossing</span>}
+                {idea.facts.map((fact) => <span key={fact}>{fact}</span>)}
               </div>
               <div className="micro-plan">
                 <div className="match-explanation">
-                  <span>Why this ranks here</span>
-                  <p>{destination.matchReasons.join(" ")}</p>
+                  <span>Why this fits</span>
+                  <p>{idea.matchReasons.join(" ")}</p>
                 </div>
-                <div><span>One strong anchor</span><p>{destination.anchor}</p></div>
-                <div><span>Where to stay</span><p>{destination.stay}</p></div>
-                <div className="caution">
-                  <span>Reality check</span>
-                  <p>{destination.tradeoffs[0] ? `${destination.tradeoffs[0]} ${destination.caution}` : destination.caution}</p>
-                </div>
-                {destination.sourceReferences[0]?.url && (
+                <div><span>Possible anchors</span><p>{idea.anchors}</p></div>
+                {idea.source && (
                   <div className="source-reference">
                     <span>Research source</span>
                     <a
-                      href={destination.sourceReferences[0].url}
+                      href={idea.source.url}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      {destination.sourceReferences[0].title} ↗
+                      {idea.source.title} ↗
                     </a>
                   </div>
                 )}
               </div>
-              {currentUser && (
+              {currentUser && idea.destinationId && (
                 <button
                   className="visited-toggle"
                   type="button"
-                  aria-pressed={visitedDestinationIds.includes(destination.id)}
-                  disabled={visitedDestinationIds.includes(destination.id)}
+                  aria-pressed={visitedDestinationIds.includes(idea.destinationId)}
+                  disabled={visitedDestinationIds.includes(idea.destinationId)}
                   onClick={(event) => {
                     event.stopPropagation();
-                    void markVisitedDestination(destination.id);
+                    void markVisitedDestination(idea.destinationId!);
                   }}
                 >
-                  {visitedDestinationIds.includes(destination.id)
+                  {visitedDestinationIds.includes(idea.destinationId)
                     ? "Visited"
                     : "Mark as visited"}
                 </button>
@@ -677,10 +782,15 @@ export function TripPlanner({
             </article>
           ))}
         </div>
-        {topResults.length === 0 && (
+        {tripIdeas.length > 3 && (
+          <button className="show-more-ideas" type="button" onClick={() => setShowAllIdeas((current) => !current)}>
+            {showAllIdeas ? "Show fewer ideas" : `Show ${tripIdeas.length - 3} more ideas`}
+          </button>
+        )}
+        {tripIdeas.length === 0 && (
           <div className="empty-state">
-            <h3>No destination fits every active constraint.</h3>
-            <p>Adjust the drive time, trip length, or route logistics—we won’t pretend a rushed weekend is a good fit.</p>
+            <h3>No trip idea fits every active constraint.</h3>
+            <p>Adjust the drive time, interests, or route boundaries — we won’t pretend a rushed plan is a good fit.</p>
           </div>
         )}
         <p className="search-status" aria-live="polite">

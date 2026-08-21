@@ -11,6 +11,7 @@ describe("planner URL state", () => {
       maxDriveHours: 2.5,
       travelingWithChildren: false,
       days: 3,
+      pace: "see-more",
       preferences: ["city", "ocean"],
       allowFerryRoutes: false,
       allowBorderCrossings: true,
@@ -18,7 +19,7 @@ describe("planner URL state", () => {
     });
 
     expect(search).toBe(
-      "days=3&drive=2.5&interests=city%2Cocean&children=0&ferry=0&border=1&visited=0",
+      "days=3&pace=see-more&drive=2.5&interests=city%2Cocean&children=0&ferry=0&border=1&visited=0",
     );
     expect(search).not.toContain("Private");
     expect(search).not.toContain("origin");
@@ -27,13 +28,14 @@ describe("planner URL state", () => {
   it("restores valid filters while retaining the non-shareable default origin", () => {
     expect(
       readPlannerStateFromSearch(
-        "?days=1&drive=1.5&interests=city%2Cocean&children=0&ferry=0&border=1&visited=0",
+        "?days=1&pace=easy&drive=1.5&interests=city%2Cocean&children=0&ferry=0&border=1&visited=0",
       ),
     ).toEqual({
       originQuery: "Issaquah, WA",
       maxDriveHours: 1.5,
       travelingWithChildren: false,
       days: 1,
+      pace: "easy",
       preferences: ["city", "ocean"],
       allowFerryRoutes: false,
       allowBorderCrossings: true,
