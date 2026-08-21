@@ -342,6 +342,15 @@ export function TripPlanner({
       : destinationIdeas;
   }, [appliedPlannerState.days, catalogRouteIdeas, liveRoutesByDestinationId, ranked]);
   const visibleTripIdeas = showAllIdeas ? tripIdeas : tripIdeas.slice(0, 3);
+  const mapRouteLayers = useMemo(
+    () => routeCatalogs.map((catalog) => ({
+      id: catalog.id,
+      name: catalog.name,
+      shape: catalog.shape,
+      areas: catalog.areas,
+    })),
+    [routeCatalogs],
+  );
 
   const topResults = ranked.slice(0, 5);
   const selected = ranked.find((destination) => destination.id === selectedId) ?? topResults[0];
@@ -743,11 +752,7 @@ export function TripPlanner({
             accessToken={mapboxAccessToken}
             origin={appliedOrigin}
             destinations={topResults}
-            routeLayers={routeCatalogs.map((catalog) => ({
-              id: catalog.id,
-              name: catalog.name,
-              areas: catalog.areas,
-            }))}
+            routeLayers={mapRouteLayers}
             selectedDestinationId={selected?.id}
             onDestinationSelect={setSelectedId}
           />

@@ -9,7 +9,13 @@ import type { RankedDestination } from "@/lib/trips/types";
 export type MapRouteLayer = {
   id: string;
   name: string;
+  shape?: "linear" | "loop";
   areas: readonly { id: string; name: string; latitude: number; longitude: number }[];
+};
+
+type LoadedRouteGeometry = {
+  coordinates: readonly (readonly [number, number])[];
+  originKey: string | null;
 };
 
 type InteractiveMapProps = {
@@ -29,6 +35,7 @@ function destinationsWithCoordinates(destinations: readonly RankedDestination[])
 }
 
 const routeColors = ["#167c73", "#ff6b35", "#574b90", "#3f6fa8"];
+const EMPTY_ROUTE_LAYERS: readonly MapRouteLayer[] = [];
 
 function routeLayerId(routeId: string, suffix: string) {
   return `nearbound-route-${routeId}-${suffix}`;
@@ -38,7 +45,7 @@ export function InteractiveMap({
   accessToken,
   origin,
   destinations,
-  routeLayers = [],
+  routeLayers = EMPTY_ROUTE_LAYERS,
   selectedDestinationId,
   onDestinationSelect,
 }: InteractiveMapProps) {
@@ -50,6 +57,10 @@ export function InteractiveMap({
   const [mapReady, setMapReady] = useState(false);
   const [showPlaces, setShowPlaces] = useState(true);
   const [visibleRouteIds, setVisibleRouteIds] = useState<string[]>([]);
+  const [routeGeometries, setRouteGeometries] = useState<Record<string, LoadedRouteGeometry>>({});
+  const [loadingRouteIds, setLoadingRouteIds] = useState<string[]>([]);
+  const [routeGeometryErrors, setRouteGeometryErrors] = useState<Record<string, string>>({});
+  const originKey = `${origin.longitude},${origin.latitude}`;
 
   useEffect(() => {
     selectDestinationRef.current = onDestinationSelect;
@@ -88,6 +99,62 @@ export function InteractiveMap({
   }, [accessToken, origin.latitude, origin.longitude]);
 
   useEffect(() => {
+    setRouteGeometries((geometries) => Object.fromEntries(
+      Object.entries(geometries).filter(([routeId]) =>
+        routeLayers.find((route) => route.id === routeId)?.shape !== "loop",
+      ),
+    ));
+    setRouteGeometryErrors({});
+  }, [originKey, routeLayers]);
+
+  async function loadRouteGeometry(route: MapRouteLayer) {
+    const existingGeometry = routeGeometries[route.id];
+    if (
+      existingGeometry
+      && (route.shape !== "loop" || existingGeometry.originKey === originKey)
+    ) {
+      return;
+    }
+
+    setLoadingRouteIds((routeIds) => [...new Set([...routeIds, route.id])]);
+    setRouteGeometryErrors((errors) => {
+      const { [route.id]: ignored, ...rest } = errors;
+      void ignored;
+      return rest;
+    });
+
+    try {
+      const response = await fetch(`/api/route-geometries/${route.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(route.shape === "loop" ? { origin } : {}),
+      });
+      const body = await response.json() as {
+        coordinates?: unknown;
+        error?: string;
+      };
+      if (!response.ok || !Array.isArray(body.coordinates)) {
+        throw new Error(body.error ?? "Route geometry is unavailable.");
+      }
+
+      setRouteGeometries((geometries) => ({
+        ...geometries,
+        [route.id]: {
+          coordinates: body.coordinates as readonly (readonly [number, number])[],
+          originKey: route.shape === "loop" ? originKey : null,
+        },
+      }));
+    } catch (error) {
+      setRouteGeometryErrors((errors) => ({
+        ...errors,
+        [route.id]: error instanceof Error ? error.message : "Route geometry is unavailable.",
+      }));
+    } finally {
+      setLoadingRouteIds((routeIds) => routeIds.filter((routeId) => routeId !== route.id));
+    }
+  }
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
 
@@ -95,7 +162,11 @@ export function InteractiveMap({
       const sourceId = routeLayerId(route.id, "source");
       const lineId = routeLayerId(route.id, "line");
       const pointId = routeLayerId(route.id, "points");
-      const coordinates = route.areas.map((area) => [area.longitude, area.latitude]);
+      const geometry = routeGeometries[route.id];
+      const coordinates = geometry
+        && (route.shape !== "loop" || geometry.originKey === originKey)
+        ? geometry.coordinates
+        : route.areas.map((area) => [area.longitude, area.latitude] as const);
       if (coordinates.length < 2) continue;
 
       if (map.getLayer(lineId)) map.removeLayer(lineId);
@@ -161,7 +232,7 @@ export function InteractiveMap({
         if (map.getSource(sourceId)) map.removeSource(sourceId);
       }
     };
-  }, [mapReady, routeLayers, visibleRouteIds]);
+  }, [mapReady, originKey, routeGeometries, routeLayers, visibleRouteIds]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -243,13 +314,21 @@ export function InteractiveMap({
             <input
               type="checkbox"
               checked={visibleRouteIds.includes(route.id)}
-              onChange={() => setVisibleRouteIds((visible) =>
-                visible.includes(route.id)
-                  ? visible.filter((routeId) => routeId !== route.id)
-                  : [...visible, route.id],
-              )}
+              onChange={() => {
+                const isVisible = visibleRouteIds.includes(route.id);
+                setVisibleRouteIds((visible) =>
+                  isVisible
+                    ? visible.filter((routeId) => routeId !== route.id)
+                    : [...visible, route.id],
+                );
+                if (!isVisible) void loadRouteGeometry(route);
+              }}
             />
-            {route.name}
+            {loadingRouteIds.includes(route.id)
+              ? `Drawing ${route.name}…`
+              : routeGeometryErrors[route.id]
+                ? `${route.name} (route order)`
+                : route.name}
           </label>
         ))}
       </div>
