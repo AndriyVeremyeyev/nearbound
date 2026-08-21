@@ -13,6 +13,7 @@ import {
   routeWaypoints,
   routes,
   routeEstimates,
+  routeLegs,
   sourceReferences,
   stopPreferences,
   stops,
@@ -645,6 +646,22 @@ const oregonCoastRoute = {
   summary: "A north-to-south Oregon Coast road trip from Astoria to Brookings. Its 14 areas and optional anchors can support a slower coast reset or a more active multi-stop itinerary.",
 } as const;
 
+const oregonCoastRouteLegs = [
+  { position: 1, fromAreaId: "oregon-coast-astoria", toAreaId: "oregon-coast-cannon-beach", distanceMiles: 27, driveMinutes: 40 },
+  { position: 2, fromAreaId: "oregon-coast-cannon-beach", toAreaId: "oregon-coast-nehalem-bay", distanceMiles: 25, driveMinutes: 35 },
+  { position: 3, fromAreaId: "oregon-coast-nehalem-bay", toAreaId: "oregon-coast-three-capes", distanceMiles: 47, driveMinutes: 65 },
+  { position: 4, fromAreaId: "oregon-coast-three-capes", toAreaId: "oregon-coast-pacific-city", distanceMiles: 42, driveMinutes: 60 },
+  { position: 5, fromAreaId: "oregon-coast-pacific-city", toAreaId: "oregon-coast-lincoln-city", distanceMiles: 25, driveMinutes: 35 },
+  { position: 6, fromAreaId: "oregon-coast-lincoln-city", toAreaId: "oregon-coast-newport", distanceMiles: 30, driveMinutes: 45 },
+  { position: 7, fromAreaId: "oregon-coast-newport", toAreaId: "oregon-coast-cape-perpetua", distanceMiles: 34, driveMinutes: 50 },
+  { position: 8, fromAreaId: "oregon-coast-cape-perpetua", toAreaId: "oregon-coast-florence", distanceMiles: 35, driveMinutes: 50 },
+  { position: 9, fromAreaId: "oregon-coast-florence", toAreaId: "oregon-coast-coos-bay", distanceMiles: 50, driveMinutes: 75 },
+  { position: 10, fromAreaId: "oregon-coast-coos-bay", toAreaId: "oregon-coast-bandon", distanceMiles: 27, driveMinutes: 40 },
+  { position: 11, fromAreaId: "oregon-coast-bandon", toAreaId: "oregon-coast-port-orford", distanceMiles: 57, driveMinutes: 75 },
+  { position: 12, fromAreaId: "oregon-coast-port-orford", toAreaId: "oregon-coast-gold-beach", distanceMiles: 49, driveMinutes: 65 },
+  { position: 13, fromAreaId: "oregon-coast-gold-beach", toAreaId: "oregon-coast-boardman", distanceMiles: 35, driveMinutes: 50 },
+] as const;
+
 const { getDatabase } = await import("@/lib/db/client");
 const database = getDatabase();
 const now = new Date();
@@ -898,6 +915,10 @@ await database
   .where(inArray(routeWaypoints.routeId, [oregonCoastRoute.id]));
 
 await database
+  .delete(routeLegs)
+  .where(inArray(routeLegs.routeId, [oregonCoastRoute.id]));
+
+await database
   .delete(areaStops)
   .where(inArray(areaStops.areaId, oregonCoastAreaIds));
 
@@ -969,6 +990,16 @@ const oregonCoastRouteWaypoints = oregonCoastAreas.flatMap((area, areaIndex) => 
 ]);
 
 await database.insert(routeWaypoints).values(oregonCoastRouteWaypoints);
+
+await database.insert(routeLegs).values(
+  oregonCoastRouteLegs.map((leg) => ({
+    ...leg,
+    routeId: oregonCoastRoute.id,
+    sourceType: "curated",
+    lastVerifiedAt: CATALOG_VERIFIED_ON,
+    reviewDueAt: CATALOG_REVIEW_DUE_ON,
+  })),
+);
 
 const sourceForStop = (stopId: string) => {
   if (stopId === "columbia-river-maritime-museum") return "columbia-river-maritime-museum";

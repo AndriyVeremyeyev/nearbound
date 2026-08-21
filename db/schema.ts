@@ -514,6 +514,41 @@ export const routeWaypoints = pgTable(
   ],
 );
 
+export const routeLegs = pgTable(
+  "route_legs",
+  {
+    routeId: text("route_id").notNull().references(() => routes.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    fromAreaId: text("from_area_id").notNull().references(() => areas.id, { onDelete: "restrict" }),
+    toAreaId: text("to_area_id").notNull().references(() => areas.id, { onDelete: "restrict" }),
+    distanceMiles: doublePrecision("distance_miles").notNull(),
+    driveMinutes: integer("drive_minutes").notNull(),
+    sourceType: text("source_type").notNull().default("curated"),
+    lastVerifiedAt: date("last_verified_at"),
+    reviewDueAt: date("review_due_at"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.routeId, table.position] }),
+    index("route_legs_from_area_id_idx").on(table.fromAreaId),
+    index("route_legs_to_area_id_idx").on(table.toAreaId),
+    check("route_legs_position_check", sql`${table.position} > 0`),
+    check("route_legs_distance_check", sql`${table.distanceMiles} > 0`),
+    check("route_legs_drive_minutes_check", sql`${table.driveMinutes} > 0`),
+    check(
+      "route_legs_source_type_check",
+      sql`${table.sourceType} in ('curated', 'live')`,
+    ),
+    check(
+      "route_legs_distinct_areas_check",
+      sql`${table.fromAreaId} <> ${table.toAreaId}`,
+    ),
+    check(
+      "route_legs_review_due_after_verification_check",
+      sql`${table.reviewDueAt} is null or ${table.lastVerifiedAt} is null or ${table.reviewDueAt} >= ${table.lastVerifiedAt}`,
+    ),
+  ],
+);
+
 export const catalogEvidence = pgTable(
   "catalog_evidence",
   {
