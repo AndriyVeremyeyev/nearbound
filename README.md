@@ -74,8 +74,8 @@ npm run db:catalog:check
 npm run dev
 ```
 
-The seed bootstraps the current 18-destination concept dataset; ongoing content can be updated directly in Neon without changing application code.
-Run `npm run db:catalog:check` after catalog changes in Neon to verify the published route graph, coordinates, source evidence, and review metadata before relying on it in the planner.
+The seed bootstraps the current 18-destination concept dataset and the Oregon Coast route catalog. Curated route changes should begin in a reviewed definition under `db/catalog/`, then be applied with the seed; Neon Console remains useful for inspecting the result.
+Run `npm run db:catalog:check` after applying a catalog change to verify the published route graph, coordinates, source evidence, and review metadata before relying on it in the planner.
 
 Useful checks:
 
