@@ -60,7 +60,7 @@ const oregonCoastCatalog: RouteCatalog = {
     { id: "cannon-beach", name: "Cannon Beach", latitude: 45.8918, longitude: -123.9615 },
   ],
   legs: [
-    { fromAreaId: "astoria", toAreaId: "cannon-beach", distanceMiles: 27, driveMinutes: 40 },
+    { fromAreaId: "astoria", toAreaId: "cannon-beach", distanceMiles: 27, driveMinutes: 40, usesFerry: false },
   ],
   stops: [
     { id: "museum", areaId: "astoria", name: "Maritime Museum", typicalDurationMinutes: 120, childFit: "good", preferences: ["city", "ocean"] },

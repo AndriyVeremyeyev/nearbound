@@ -16,9 +16,9 @@ const oregonCoastFixture: RouteCatalog = {
     { id: "yachats", name: "Yachats & Cape Perpetua", latitude: 44.291, longitude: -124.108 },
   ],
   legs: [
-    { fromAreaId: "astoria", toAreaId: "cannon", distanceMiles: 27, driveMinutes: 40 },
-    { fromAreaId: "cannon", toAreaId: "newport", distanceMiles: 55, driveMinutes: 80 },
-    { fromAreaId: "newport", toAreaId: "yachats", distanceMiles: 34, driveMinutes: 50 },
+    { fromAreaId: "astoria", toAreaId: "cannon", distanceMiles: 27, driveMinutes: 40, usesFerry: false },
+    { fromAreaId: "cannon", toAreaId: "newport", distanceMiles: 55, driveMinutes: 80, usesFerry: false },
+    { fromAreaId: "newport", toAreaId: "yachats", distanceMiles: 34, driveMinutes: 50, usesFerry: false },
   ],
   stops: [
     { id: "museum", areaId: "astoria", name: "Maritime Museum", typicalDurationMinutes: 120, childFit: "good", preferences: ["city", "ocean"] },
@@ -37,6 +37,7 @@ describe("composeTripIdeas", () => {
       pace: "easy",
       preferences: ["animals", "ocean"],
       travelingWithChildren: true,
+      allowFerryRoutes: true,
     });
 
     expect(idea.areaIds).toHaveLength(1);
@@ -49,6 +50,7 @@ describe("composeTripIdeas", () => {
       pace: "balanced",
       preferences: ["ocean", "forest"],
       travelingWithChildren: false,
+      allowFerryRoutes: true,
     });
 
     expect(idea.areaIds.length).toBeGreaterThanOrEqual(3);
@@ -62,6 +64,7 @@ describe("composeTripIdeas", () => {
       pace: "see-more",
       preferences: ["forest"],
       travelingWithChildren: true,
+      allowFerryRoutes: true,
     });
 
     expect(ideas.flatMap((idea) => idea.stops).map((stop) => stop.id)).not.toContain(
@@ -80,6 +83,7 @@ describe("composeTripIdeas", () => {
       pace: "balanced",
       preferences: ["ocean"],
       travelingWithChildren: false,
+      allowFerryRoutes: true,
     });
 
     expect(ideas.every((idea) => idea.areaIds.length < 3)).toBe(true);
@@ -93,6 +97,7 @@ describe("composeTripIdeas", () => {
         pace: "balanced",
         preferences: ["ocean"],
         travelingWithChildren: true,
+        allowFerryRoutes: true,
       },
       { startAreaId: "astoria", endAreaId: "cannon" },
     );
@@ -123,6 +128,7 @@ describe("composeTripIdeas", () => {
       pace: "balanced",
       preferences: ["ocean"],
       travelingWithChildren: true,
+      allowFerryRoutes: true,
     })).toEqual([]);
 
     const [adultIdea] = composeTripIdeas(catalogWithPlans, {
@@ -130,8 +136,51 @@ describe("composeTripIdeas", () => {
       pace: "balanced",
       preferences: ["ocean"],
       travelingWithChildren: false,
+      allowFerryRoutes: true,
     });
     expect(adultIdea.title).toBe("North Coast escape");
+  });
+
+  it("excludes a ferry trip when ferry routes are not allowed", () => {
+    const ferryCatalog: RouteCatalog = {
+      ...oregonCoastFixture,
+      plans: [
+        {
+          id: "island-ferry-day",
+          name: "Island ferry day",
+          summary: "A short island plan.",
+          startAreaId: "astoria",
+          endAreaId: "cannon",
+          minDays: 1,
+          minDaysWithChildren: 1,
+          maxDays: 2,
+        },
+      ],
+      legs: [{
+        fromAreaId: "astoria",
+        toAreaId: "cannon",
+        distanceMiles: 27,
+        driveMinutes: 40,
+        usesFerry: true,
+      }],
+    };
+
+    expect(composeTripIdeas(ferryCatalog, {
+      days: 1,
+      pace: "balanced",
+      preferences: ["ocean"],
+      travelingWithChildren: false,
+      allowFerryRoutes: false,
+    })).toEqual([]);
+
+    const [idea] = composeTripIdeas(ferryCatalog, {
+      days: 1,
+      pace: "balanced",
+      preferences: ["ocean"],
+      travelingWithChildren: false,
+      allowFerryRoutes: true,
+    });
+    expect(idea?.usesFerry).toBe(true);
   });
 
   it("adds planned family breaks and travel-day buffers to the time budget", () => {
@@ -153,6 +202,7 @@ describe("composeTripIdeas", () => {
       pace: "balanced",
       preferences: ["ocean", "animals"],
       travelingWithChildren: false,
+      allowFerryRoutes: true,
     });
     const fitted = fitTripIdeaToAccess(
       idea,

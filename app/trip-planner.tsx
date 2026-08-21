@@ -272,6 +272,7 @@ export function TripPlanner({
           pace: appliedPlannerState.pace,
           preferences: appliedPlannerState.preferences,
           travelingWithChildren: appliedPlannerState.travelingWithChildren,
+          allowFerryRoutes: appliedPlannerState.allowFerryRoutes,
         }).flatMap((idea) => {
           const outboundAccess = liveRouteAccessByAreaId.get(idea.startArea.id);
           const returnAccess = liveRouteAccessByAreaId.get(idea.endArea.id);
@@ -333,6 +334,7 @@ export function TripPlanner({
             `${formatDriveTime(outboundAccess.outboundMinutes / 60)} to ${idea.startArea.name}`,
             `${formatDriveTime(idea.driveMinutes / 60)} moving between areas`,
             `${formatDriveTime(returnAccess.returnMinutes / 60)} home from ${idea.endArea.name}`,
+            ...(idea.usesFerry ? ["Ferry crossing included"] : []),
           ],
           matchReasons: idea.matchedPreferences.length
             ? [`Includes ${idea.matchedPreferences.map(formatPreference).join(" and ")}.`]

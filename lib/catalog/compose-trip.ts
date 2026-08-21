@@ -23,6 +23,7 @@ export type CatalogRouteLeg = {
   toAreaId: string;
   distanceMiles: number;
   driveMinutes: number;
+  usesFerry: boolean;
 };
 
 export type CatalogTripPlan = {
@@ -60,6 +61,7 @@ export type TripCompositionCriteria = {
   pace: TripPace;
   preferences: readonly string[];
   travelingWithChildren: boolean;
+  allowFerryRoutes: boolean;
 };
 
 export type TripIdea = {
@@ -76,6 +78,7 @@ export type TripIdea = {
   driveSegmentMinutes: number[];
   activityMinutes: number;
   matchedPreferences: string[];
+  usesFerry: boolean;
 };
 
 export type TripIdeaAccess = {
@@ -344,6 +347,9 @@ export function composeTripIdeas(
         continue;
       }
 
+      const usesFerry = selectedLegs.some((leg) => leg.usesFerry);
+      if (usesFerry && !criteria.allowFerryRoutes) continue;
+
       const driveMinutes = selectedLegs.reduce(
         (total, leg) => total + leg.driveMinutes,
         0,
@@ -390,6 +396,7 @@ export function composeTripIdeas(
         driveSegmentMinutes: selectedLegs.map((leg) => leg.driveMinutes),
         activityMinutes: selection.activityMinutes,
         matchedPreferences: matched,
+        usesFerry,
         score,
       });
   }
@@ -414,6 +421,7 @@ export function composeTripIdeas(
       driveSegmentMinutes: candidate.driveSegmentMinutes,
       activityMinutes: candidate.activityMinutes,
       matchedPreferences: candidate.matchedPreferences,
+      usesFerry: candidate.usesFerry,
     }));
 }
 

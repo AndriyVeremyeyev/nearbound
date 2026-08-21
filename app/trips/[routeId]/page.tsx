@@ -90,6 +90,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       pace: sharedPlannerState.pace,
       preferences: sharedPlannerState.preferences,
       travelingWithChildren: sharedPlannerState.travelingWithChildren,
+      allowFerryRoutes: sharedPlannerState.allowFerryRoutes,
     },
     { startAreaId, endAreaId },
   );

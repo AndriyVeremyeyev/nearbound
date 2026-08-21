@@ -83,6 +83,18 @@ import {
   sourceForMountRainierSouthArea,
   sourceForMountRainierSouthStop,
 } from "./catalog/mount-rainier-south";
+import {
+  WHIDBEY_ISLAND_REVIEW_DUE_ON,
+  WHIDBEY_ISLAND_VERIFIED_ON,
+  sourceForWhidbeyIslandArea,
+  sourceForWhidbeyIslandStop,
+  whidbeyIslandAreas,
+  whidbeyIslandRoute,
+  whidbeyIslandRouteLegs,
+  whidbeyIslandSources,
+  whidbeyIslandStops,
+  whidbeyIslandTripPlans,
+} from "./catalog/whidbey-island";
 
 const preferenceSeeds = [
   { id: "ocean", label: "Ocean", sortOrder: 1 },
@@ -888,6 +900,34 @@ const routeCatalogSeeds = [
       {
         sourceId: "nps-rainier-hours",
         note: "Mount Rainier road and facility access is seasonal and weather-dependent, so the route remains a curated plan rather than a live availability promise.",
+      },
+    ],
+  },
+  {
+    route: whidbeyIslandRoute,
+    tripPlans: whidbeyIslandTripPlans,
+    areas: whidbeyIslandAreas,
+    stops: whidbeyIslandStops,
+    hikeDetails: [],
+    sources: whidbeyIslandSources,
+    legs: whidbeyIslandRouteLegs,
+    regionCode: "WA",
+    verifiedOn: WHIDBEY_ISLAND_VERIFIED_ON,
+    reviewDueOn: WHIDBEY_ISLAND_REVIEW_DUE_ON,
+    sourceForArea: sourceForWhidbeyIslandArea,
+    sourceForStop: sourceForWhidbeyIslandStop,
+    routeEvidence: [
+      {
+        sourceId: "wsdot-mukilteo-clinton",
+        note: "Washington State Ferries documents Mukilteo–Clinton as a scheduled route; current sailing and terminal conditions remain a same-day check.",
+      },
+      {
+        sourceId: "ebeys-landing-nps",
+        note: "The National Park Service documents the historic, agricultural and coastal landscape around Coupeville and Ebey's Landing.",
+      },
+      {
+        sourceId: "wa-parks-deception-pass",
+        note: "Washington State Parks documents Deception Pass as the north-island state-park anchor for this loop.",
       },
     ],
   },

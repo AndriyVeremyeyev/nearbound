@@ -48,6 +48,7 @@ export async function loadRouteCatalog(
         toAreaId: routeLegs.toAreaId,
         distanceMiles: routeLegs.distanceMiles,
         driveMinutes: routeLegs.driveMinutes,
+        usesFerry: routeLegs.usesFerry,
       })
       .from(routeLegs)
       .where(eq(routeLegs.routeId, routeId))

@@ -559,6 +559,7 @@ export const routeLegs = pgTable(
     toAreaId: text("to_area_id").notNull().references(() => areas.id, { onDelete: "restrict" }),
     distanceMiles: doublePrecision("distance_miles").notNull(),
     driveMinutes: integer("drive_minutes").notNull(),
+    usesFerry: boolean("uses_ferry").notNull().default(false),
     sourceType: text("source_type").notNull().default("curated"),
     lastVerifiedAt: date("last_verified_at"),
     reviewDueAt: date("review_due_at"),
