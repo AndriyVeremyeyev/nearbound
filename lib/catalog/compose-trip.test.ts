@@ -1,4 +1,4 @@
-import { composeTripIdeas, type RouteCatalog } from "./compose-trip";
+import { composeTripIdeas, findTripIdea, type RouteCatalog } from "./compose-trip";
 
 const oregonCoastFixture: RouteCatalog = {
   id: "oregon-pacific-coast-byway",
@@ -77,5 +77,21 @@ describe("composeTripIdeas", () => {
     });
 
     expect(ideas.every((idea) => idea.areaIds.length < 3)).toBe(true);
+  });
+
+  it("reconstructs a selected safe route segment from the catalog", () => {
+    const idea = findTripIdea(
+      oregonCoastFixture,
+      {
+        days: 2,
+        pace: "balanced",
+        preferences: ["ocean"],
+        travelingWithChildren: true,
+      },
+      { startAreaId: "astoria", endAreaId: "cannon" },
+    );
+
+    expect(idea?.title).toBe("Astoria to Cannon Beach");
+    expect(idea?.areaIds).toEqual(["astoria", "cannon"]);
   });
 });

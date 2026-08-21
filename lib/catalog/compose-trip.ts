@@ -5,6 +5,7 @@ export type CatalogRouteArea = {
   name: string;
   latitude: number;
   longitude: number;
+  summary?: string;
 };
 
 export type CatalogRouteStop = {
@@ -14,6 +15,7 @@ export type CatalogRouteStop = {
   typicalDurationMinutes: number;
   childFit: "good" | "possible" | "not_recommended";
   preferences: string[];
+  summary?: string;
 };
 
 export type CatalogRouteLeg = {
@@ -26,9 +28,18 @@ export type CatalogRouteLeg = {
 export type RouteCatalog = {
   id: string;
   name: string;
+  summary?: string;
+  sourceReferences?: readonly CatalogRouteSourceReference[];
   areas: readonly CatalogRouteArea[];
   stops: readonly CatalogRouteStop[];
   legs: readonly CatalogRouteLeg[];
+};
+
+export type CatalogRouteSourceReference = {
+  title: string;
+  url: string;
+  publisherType: string;
+  lastVerifiedAt: string | null;
 };
 
 export type TripCompositionCriteria = {
@@ -258,4 +269,20 @@ export function composeTripIdeas(
       activityMinutes: candidate.activityMinutes,
       matchedPreferences: candidate.matchedPreferences,
     }));
+}
+
+export function findTripIdea(
+  catalog: RouteCatalog,
+  criteria: TripCompositionCriteria,
+  selection: { startAreaId: string; endAreaId: string },
+) {
+  return composeTripIdeas(
+    catalog,
+    criteria,
+    Math.max(1, catalog.areas.length ** 2),
+  ).find(
+    (idea) =>
+      idea.startArea.id === selection.startAreaId &&
+      idea.endArea.id === selection.endAreaId,
+  );
 }

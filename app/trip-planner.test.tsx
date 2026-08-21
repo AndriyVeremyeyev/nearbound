@@ -174,6 +174,9 @@ describe("Nearbound concept prototype", () => {
     );
     expect(screen.getByText("2h to Astoria")).toBeInTheDocument();
     expect(screen.getByText("2h 40m home from Cannon Beach")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open details for Astoria to Cannon Beach" }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText("Possible anchors")).not.toHaveLength(0);
   });
 

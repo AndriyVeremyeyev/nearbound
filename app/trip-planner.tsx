@@ -135,6 +135,9 @@ type PlannerTripIdea = {
   anchors: string;
   source?: { title: string; url: string };
   destinationId?: string;
+  routeId?: string;
+  startAreaId?: string;
+  endAreaId?: string;
 };
 
 const defaultOrigin: ResolvedOrigin = {
@@ -301,27 +304,32 @@ export function TripPlanner({
         destinationId: destination.id,
       };
     });
-    const routeIdeas = oregonCoastIdeas.map(({ idea, outboundAccess, returnAccess }) => ({
-      id: `route:${idea.id}`,
-      context: "Oregon Coast",
-      title: idea.title,
-      summary: "A connected stretch of coast with room to choose the stops that suit the day.",
-      facts: [
-        `${idea.areaIds.length} areas · ${idea.stops.length} stops`,
-        `${formatDriveTime(outboundAccess.outboundMinutes / 60)} to ${idea.startArea.name}`,
-        `${formatDriveTime(idea.driveMinutes / 60)} moving between areas`,
-        `${formatDriveTime(returnAccess.returnMinutes / 60)} home from ${idea.endArea.name}`,
-      ],
-      matchReasons: idea.matchedPreferences.length
-        ? [`Includes ${idea.matchedPreferences.map(formatPreference).join(" and ")}.`]
-        : ["Built as a connected coastal option."],
-      anchors: idea.stops.slice(0, 3).map((stop) => stop.name).join(" · "),
-    }));
+    const routeIdeas = oregonCoastCatalog
+      ? oregonCoastIdeas.map(({ idea, outboundAccess, returnAccess }) => ({
+          id: `route:${idea.id}`,
+          context: "Oregon Coast",
+          title: idea.title,
+          summary: "A connected stretch of coast with room to choose the stops that suit the day.",
+          facts: [
+            `${idea.areaIds.length} areas · ${idea.stops.length} stops`,
+            `${formatDriveTime(outboundAccess.outboundMinutes / 60)} to ${idea.startArea.name}`,
+            `${formatDriveTime(idea.driveMinutes / 60)} moving between areas`,
+            `${formatDriveTime(returnAccess.returnMinutes / 60)} home from ${idea.endArea.name}`,
+          ],
+          matchReasons: idea.matchedPreferences.length
+            ? [`Includes ${idea.matchedPreferences.map(formatPreference).join(" and ")}.`]
+            : ["Built as a connected coastal option."],
+          anchors: idea.stops.slice(0, 3).map((stop) => stop.name).join(" · "),
+          routeId: oregonCoastCatalog.id,
+          startAreaId: idea.startArea.id,
+          endAreaId: idea.endArea.id,
+        }))
+      : [];
 
     return appliedPlannerState.days >= 2
       ? [...routeIdeas, ...destinationIdeas]
       : destinationIdeas;
-  }, [appliedPlannerState.days, liveRoutesByDestinationId, oregonCoastIdeas, ranked]);
+  }, [appliedPlannerState.days, liveRoutesByDestinationId, oregonCoastCatalog, oregonCoastIdeas, ranked]);
   const visibleTripIdeas = showAllIdeas ? tripIdeas : tripIdeas.slice(0, 3);
 
   const topResults = ranked.slice(0, 5);
@@ -341,6 +349,15 @@ export function TripPlanner({
 
   function openDestination(destinationId: string) {
     window.location.assign(destinationHref(destinationId));
+  }
+
+  function routeIdeaHref(idea: PlannerTripIdea) {
+    if (!idea.routeId || !idea.startAreaId || !idea.endAreaId) return null;
+
+    const parameters = new URLSearchParams(plannerSearch);
+    parameters.set("start", idea.startAreaId);
+    parameters.set("end", idea.endAreaId);
+    return `/trips/${idea.routeId}?${parameters.toString()}`;
   }
 
   useEffect(() => {
@@ -747,8 +764,13 @@ export function TripPlanner({
         </div>
 
         <div className="results-grid">
-          {visibleTripIdeas.map((idea) => (
-            <article
+          {visibleTripIdeas.map((idea) => {
+            const detailHref = idea.destinationId
+              ? destinationHref(idea.destinationId)
+              : routeIdeaHref(idea);
+
+            return (
+              <article
               className={`trip-idea-card ${idea.destinationId && selected?.id === idea.destinationId ? "selected" : ""}`}
               id={`idea-${idea.id}`}
               key={idea.id}
@@ -756,21 +778,21 @@ export function TripPlanner({
                 if (idea.destinationId) setSelectedId(idea.destinationId);
               }}
               onClick={(event) => {
-                if (!idea.destinationId) return;
+                if (!detailHref) return;
                 if (event.target instanceof Element && event.target.closest("a")) return;
-                openDestination(idea.destinationId);
+                window.location.assign(detailHref);
               }}
               onKeyDown={(event) => {
-                if (!idea.destinationId) return;
+                if (!detailHref) return;
                 if (event.target !== event.currentTarget) return;
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  openDestination(idea.destinationId);
+                  window.location.assign(detailHref);
                 }
               }}
-              role={idea.destinationId ? "link" : undefined}
-              tabIndex={idea.destinationId ? 0 : undefined}
-              aria-label={idea.destinationId ? `Open details for ${idea.title}` : undefined}
+              role={detailHref ? "link" : undefined}
+              tabIndex={detailHref ? 0 : undefined}
+              aria-label={detailHref ? `Open details for ${idea.title}` : undefined}
             >
               <div className="result-title-row">
                 <div>
@@ -818,7 +840,8 @@ export function TripPlanner({
                 </button>
               )}
             </article>
-          ))}
+            );
+          })}
         </div>
         {tripIdeas.length > 3 && (
           <button className="show-more-ideas" type="button" onClick={() => setShowAllIdeas((current) => !current)}>

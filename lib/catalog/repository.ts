@@ -3,6 +3,8 @@ import { and, asc, eq, isNotNull } from "drizzle-orm";
 import {
   areaStops,
   areas,
+  catalogEvidence,
+  catalogSources,
   routeLegs,
   routeWaypoints,
   routes,
@@ -16,15 +18,16 @@ export async function loadRouteCatalog(
   routeId: string,
 ): Promise<RouteCatalog | null> {
   const database = getDatabase();
-  const [routeRows, areaRows, legRows, stopRows] = await Promise.all([
+  const [routeRows, areaRows, legRows, stopRows, sourceRows] = await Promise.all([
     database
-      .select({ id: routes.id, name: routes.name })
+      .select({ id: routes.id, name: routes.name, summary: routes.summary })
       .from(routes)
       .where(and(eq(routes.id, routeId), eq(routes.published, true))),
     database
       .select({
         id: areas.id,
         name: areas.name,
+        summary: areas.summary,
         latitude: areas.latitude,
         longitude: areas.longitude,
         position: routeWaypoints.position,
@@ -55,6 +58,7 @@ export async function loadRouteCatalog(
         name: stops.name,
         typicalDurationMinutes: stops.typicalDurationMinutes,
         childFit: stops.childFit,
+        summary: stops.summary,
         preferenceId: stopPreferences.preferenceId,
       })
       .from(routeWaypoints)
@@ -69,6 +73,16 @@ export async function loadRouteCatalog(
         ),
       )
       .orderBy(asc(routeWaypoints.position)),
+    database
+      .select({
+        title: catalogSources.title,
+        url: catalogSources.url,
+        publisherType: catalogSources.publisherType,
+        lastVerifiedAt: catalogEvidence.verifiedAt,
+      })
+      .from(catalogEvidence)
+      .innerJoin(catalogSources, eq(catalogEvidence.sourceId, catalogSources.id))
+      .where(eq(catalogEvidence.routeId, routeId)),
   ]);
   const route = routeRows[0];
 
@@ -93,6 +107,7 @@ export async function loadRouteCatalog(
       name: row.name,
       typicalDurationMinutes: row.typicalDurationMinutes,
       childFit: row.childFit as RouteCatalog["stops"][number]["childFit"],
+      summary: row.summary,
       preferences: row.preferenceId ? [row.preferenceId] : [],
     });
   }
@@ -100,10 +115,15 @@ export async function loadRouteCatalog(
   return {
     id: route.id,
     name: route.name,
-    areas: areaRows.flatMap(({ id, name, latitude, longitude }) =>
+    summary: route.summary,
+    sourceReferences: sourceRows.map((source) => ({
+      ...source,
+      lastVerifiedAt: source.lastVerifiedAt ?? null,
+    })),
+    areas: areaRows.flatMap(({ id, name, summary, latitude, longitude }) =>
       latitude === null || longitude === null
         ? []
-        : [{ id, name, latitude, longitude }],
+        : [{ id, name, summary, latitude, longitude }],
     ),
     stops: [...stopsById.values()],
     legs: legRows,
