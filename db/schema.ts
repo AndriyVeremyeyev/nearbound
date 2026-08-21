@@ -6,6 +6,7 @@ import {
   doublePrecision,
   integer,
   index,
+  type AnyPgColumn,
   pgTable,
   primaryKey,
   text,
@@ -286,6 +287,207 @@ export const sourceReferences = pgTable(
     check(
       "source_references_confidence_check",
       sql`${table.confidence} in ('low', 'medium', 'high')`,
+    ),
+  ],
+);
+
+export const areas = pgTable(
+  "areas",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull(),
+    parentAreaId: text("parent_area_id").references((): AnyPgColumn => areas.id, {
+      onDelete: "restrict",
+    }),
+    countryCode: text("country_code").notNull(),
+    regionCode: text("region_code").notNull(),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    summary: text("summary").notNull(),
+    published: boolean("published").notNull().default(false),
+    lastVerifiedAt: date("last_verified_at"),
+    reviewDueAt: date("review_due_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("areas_parent_area_id_idx").on(table.parentAreaId),
+    check(
+      "areas_kind_check",
+      sql`${table.kind} in ('town', 'island', 'park', 'resort', 'coastal_area', 'region')`,
+    ),
+    check(
+      "areas_coordinates_check",
+      sql`(${table.latitude} is null and ${table.longitude} is null) or (${table.latitude} is not null and ${table.longitude} is not null)`,
+    ),
+    check(
+      "areas_review_due_after_verification_check",
+      sql`${table.reviewDueAt} is null or ${table.lastVerifiedAt} is null or ${table.reviewDueAt} >= ${table.lastVerifiedAt}`,
+    ),
+  ],
+);
+
+export const stops = pgTable(
+  "stops",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    kind: text("kind").notNull(),
+    latitude: doublePrecision("latitude").notNull(),
+    longitude: doublePrecision("longitude").notNull(),
+    typicalDurationMinutes: integer("typical_duration_minutes").notNull(),
+    indoorOutdoor: text("indoor_outdoor").notNull(),
+    childFit: text("child_fit").notNull(),
+    bookingRequired: boolean("booking_required").notNull().default(false),
+    weatherSensitivity: text("weather_sensitivity").notNull(),
+    summary: text("summary").notNull(),
+    published: boolean("published").notNull().default(false),
+    lastVerifiedAt: date("last_verified_at"),
+    reviewDueAt: date("review_due_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "stops_kind_check",
+      sql`${table.kind} in ('hike', 'zoo', 'aquarium', 'museum', 'beach', 'farm', 'historic_downtown', 'viewpoint', 'park', 'other')`,
+    ),
+    check("stops_duration_check", sql`${table.typicalDurationMinutes} between 15 and 720`),
+    check(
+      "stops_indoor_outdoor_check",
+      sql`${table.indoorOutdoor} in ('indoor', 'outdoor', 'mixed')`,
+    ),
+    check(
+      "stops_child_fit_check",
+      sql`${table.childFit} in ('good', 'possible', 'not_recommended')`,
+    ),
+    check(
+      "stops_weather_sensitivity_check",
+      sql`${table.weatherSensitivity} in ('low', 'medium', 'high')`,
+    ),
+    check(
+      "stops_review_due_after_verification_check",
+      sql`${table.reviewDueAt} is null or ${table.lastVerifiedAt} is null or ${table.reviewDueAt} >= ${table.lastVerifiedAt}`,
+    ),
+  ],
+);
+
+export const areaStops = pgTable(
+  "area_stops",
+  {
+    areaId: text("area_id").notNull().references(() => areas.id, { onDelete: "cascade" }),
+    stopId: text("stop_id").notNull().references(() => stops.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("primary"),
+    travelMinutesFromAreaCenter: integer("travel_minutes_from_area_center"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.areaId, table.stopId] }),
+    index("area_stops_stop_id_idx").on(table.stopId),
+    check("area_stops_role_check", sql`${table.role} in ('primary', 'nearby', 'gateway')`),
+    check(
+      "area_stops_travel_minutes_check",
+      sql`${table.travelMinutesFromAreaCenter} is null or ${table.travelMinutesFromAreaCenter} >= 0`,
+    ),
+  ],
+);
+
+export const stopPreferences = pgTable(
+  "stop_preferences",
+  {
+    stopId: text("stop_id").notNull().references(() => stops.id, { onDelete: "cascade" }),
+    preferenceId: text("preference_id")
+      .notNull()
+      .references(() => preferences.id, { onDelete: "restrict" }),
+    strength: text("strength").notNull().default("secondary"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.stopId, table.preferenceId] }),
+    check(
+      "stop_preferences_strength_check",
+      sql`${table.strength} in ('primary', 'secondary')`,
+    ),
+  ],
+);
+
+export const hikeDetails = pgTable(
+  "hike_details",
+  {
+    stopId: text("stop_id").primaryKey().references(() => stops.id, { onDelete: "cascade" }),
+    difficulty: text("difficulty").notNull(),
+    distanceMiles: doublePrecision("distance_miles").notNull(),
+    elevationGainFeet: integer("elevation_gain_feet").notNull(),
+    routeShape: text("route_shape").notNull(),
+    trailheadLatitude: doublePrecision("trailhead_latitude"),
+    trailheadLongitude: doublePrecision("trailhead_longitude"),
+  },
+  (table) => [
+    check("hike_details_difficulty_check", sql`${table.difficulty} in ('easy', 'moderate', 'hard')`),
+    check("hike_details_distance_check", sql`${table.distanceMiles} > 0`),
+    check("hike_details_elevation_check", sql`${table.elevationGainFeet} >= 0`),
+    check(
+      "hike_details_route_shape_check",
+      sql`${table.routeShape} in ('loop', 'out_and_back', 'point_to_point')`,
+    ),
+    check(
+      "hike_details_trailhead_coordinates_check",
+      sql`(${table.trailheadLatitude} is null and ${table.trailheadLongitude} is null) or (${table.trailheadLatitude} is not null and ${table.trailheadLongitude} is not null)`,
+    ),
+  ],
+);
+
+export const catalogSources = pgTable(
+  "catalog_sources",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    url: text("url").notNull().unique(),
+    publisherType: text("publisher_type").notNull(),
+    lastCheckedAt: date("last_checked_at"),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "catalog_sources_publisher_type_check",
+      sql`${table.publisherType} in ('official', 'visitor_bureau', 'government', 'trail_organization')`,
+    ),
+    check("catalog_sources_status_check", sql`${table.status} in ('active', 'needs_review', 'broken')`),
+  ],
+);
+
+export const catalogEvidence = pgTable(
+  "catalog_evidence",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => catalogSources.id, { onDelete: "cascade" }),
+    areaId: text("area_id").references(() => areas.id, { onDelete: "cascade" }),
+    stopId: text("stop_id").references(() => stops.id, { onDelete: "cascade" }),
+    claimType: text("claim_type").notNull(),
+    note: text("note").notNull(),
+    confidence: text("confidence").notNull(),
+    verifiedAt: date("verified_at"),
+    reviewDueAt: date("review_due_at"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("catalog_evidence_source_id_idx").on(table.sourceId),
+    index("catalog_evidence_area_id_idx").on(table.areaId),
+    index("catalog_evidence_stop_id_idx").on(table.stopId),
+    check(
+      "catalog_evidence_one_subject_check",
+      sql`(${table.areaId} is not null and ${table.stopId} is null) or (${table.areaId} is null and ${table.stopId} is not null)`,
+    ),
+    check("catalog_evidence_confidence_check", sql`${table.confidence} in ('low', 'medium', 'high')`),
+    check(
+      "catalog_evidence_review_due_after_verification_check",
+      sql`${table.reviewDueAt} is null or ${table.verifiedAt} is null or ${table.reviewDueAt} >= ${table.verifiedAt}`,
     ),
   ],
 );
