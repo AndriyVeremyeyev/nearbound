@@ -44,6 +44,19 @@ import {
   sourceForNorthCascadesSr20Area,
   sourceForNorthCascadesSr20Stop,
 } from "./catalog/north-cascades-sr20";
+import {
+  OLYMPIC_PENINSULA_REVIEW_DUE_ON,
+  OLYMPIC_PENINSULA_VERIFIED_ON,
+  olympicPeninsulaAreas,
+  olympicPeninsulaHikeDetails,
+  olympicPeninsulaRoute,
+  olympicPeninsulaRouteLegs,
+  olympicPeninsulaSources,
+  olympicPeninsulaStops,
+  olympicPeninsulaTripPlans,
+  sourceForOlympicPeninsulaArea,
+  sourceForOlympicPeninsulaStop,
+} from "./catalog/olympic-peninsula";
 
 const preferenceSeeds = [
   { id: "ocean", label: "Ocean", sortOrder: 1 },
@@ -777,6 +790,30 @@ const routeCatalogSeeds = [
       {
         sourceId: "wsdot-sr20-seasonal-closure",
         note: "SR-20 over the North Cascades is a seasonal highway; current conditions and closure dates must be checked before departure.",
+      },
+    ],
+  },
+  {
+    route: olympicPeninsulaRoute,
+    tripPlans: olympicPeninsulaTripPlans,
+    areas: olympicPeninsulaAreas,
+    stops: olympicPeninsulaStops,
+    hikeDetails: olympicPeninsulaHikeDetails,
+    sources: olympicPeninsulaSources,
+    legs: olympicPeninsulaRouteLegs,
+    regionCode: "WA",
+    verifiedOn: OLYMPIC_PENINSULA_VERIFIED_ON,
+    reviewDueOn: OLYMPIC_PENINSULA_REVIEW_DUE_ON,
+    sourceForArea: sourceForOlympicPeninsulaArea,
+    sourceForStop: sourceForOlympicPeninsulaStop,
+    routeEvidence: [
+      {
+        sourceId: "nps-olympic-getting-around",
+        note: "The National Park Service documents U.S. 101 as the road that connects Olympic Peninsula destinations and publishes planning distances between them.",
+      },
+      {
+        sourceId: "nps-olympic-trip-ideas",
+        note: "The National Park Service frames Olympic visits around distinct mountain, lake, rain-forest and coast experiences rather than a single packed stop list.",
       },
     ],
   },
