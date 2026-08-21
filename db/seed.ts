@@ -57,6 +57,32 @@ import {
   sourceForOlympicPeninsulaArea,
   sourceForOlympicPeninsulaStop,
 } from "./catalog/olympic-peninsula";
+import {
+  COLUMBIA_GORGE_REVIEW_DUE_ON,
+  COLUMBIA_GORGE_VERIFIED_ON,
+  columbiaRiverGorgeAreas,
+  columbiaRiverGorgeHikeDetails,
+  columbiaRiverGorgeRoute,
+  columbiaRiverGorgeRouteLegs,
+  columbiaRiverGorgeSources,
+  columbiaRiverGorgeStops,
+  columbiaRiverGorgeTripPlans,
+  sourceForColumbiaRiverGorgeArea,
+  sourceForColumbiaRiverGorgeStop,
+} from "./catalog/columbia-river-gorge";
+import {
+  MOUNT_RAINIER_REVIEW_DUE_ON,
+  MOUNT_RAINIER_VERIFIED_ON,
+  mountRainierSouthAreas,
+  mountRainierSouthHikeDetails,
+  mountRainierSouthRoute,
+  mountRainierSouthRouteLegs,
+  mountRainierSouthSources,
+  mountRainierSouthStops,
+  mountRainierSouthTripPlans,
+  sourceForMountRainierSouthArea,
+  sourceForMountRainierSouthStop,
+} from "./catalog/mount-rainier-south";
 
 const preferenceSeeds = [
   { id: "ocean", label: "Ocean", sortOrder: 1 },
@@ -814,6 +840,54 @@ const routeCatalogSeeds = [
       {
         sourceId: "nps-olympic-trip-ideas",
         note: "The National Park Service frames Olympic visits around distinct mountain, lake, rain-forest and coast experiences rather than a single packed stop list.",
+      },
+    ],
+  },
+  {
+    route: columbiaRiverGorgeRoute,
+    tripPlans: columbiaRiverGorgeTripPlans,
+    areas: columbiaRiverGorgeAreas,
+    stops: columbiaRiverGorgeStops,
+    hikeDetails: columbiaRiverGorgeHikeDetails,
+    sources: columbiaRiverGorgeSources,
+    legs: columbiaRiverGorgeRouteLegs,
+    regionCode: "OR",
+    verifiedOn: COLUMBIA_GORGE_VERIFIED_ON,
+    reviewDueOn: COLUMBIA_GORGE_REVIEW_DUE_ON,
+    sourceForArea: sourceForColumbiaRiverGorgeArea,
+    sourceForStop: sourceForColumbiaRiverGorgeStop,
+    routeEvidence: [
+      {
+        sourceId: "nps-rowena",
+        note: "The National Park Service documents Rowena Crest as an Oregon National Historic Trail viewpoint in the Columbia River Gorge.",
+      },
+      {
+        sourceId: "wa-parks-beacon-rock",
+        note: "Washington State Parks documents Beacon Rock State Park as a Columbia River Gorge destination with forest, river and hiking access.",
+      },
+    ],
+  },
+  {
+    route: mountRainierSouthRoute,
+    tripPlans: mountRainierSouthTripPlans,
+    areas: mountRainierSouthAreas,
+    stops: mountRainierSouthStops,
+    hikeDetails: mountRainierSouthHikeDetails,
+    sources: mountRainierSouthSources,
+    legs: mountRainierSouthRouteLegs,
+    regionCode: "WA",
+    verifiedOn: MOUNT_RAINIER_VERIFIED_ON,
+    reviewDueOn: MOUNT_RAINIER_REVIEW_DUE_ON,
+    sourceForArea: sourceForMountRainierSouthArea,
+    sourceForStop: sourceForMountRainierSouthStop,
+    routeEvidence: [
+      {
+        sourceId: "nps-rainier-basic-info",
+        note: "The National Park Service identifies the south Nisqually Entrance as the correct driving approach for the Ashford and Paradise gateway.",
+      },
+      {
+        sourceId: "nps-rainier-hours",
+        note: "Mount Rainier road and facility access is seasonal and weather-dependent, so the route remains a curated plan rather than a live availability promise.",
       },
     ],
   },
