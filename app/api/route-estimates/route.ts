@@ -1,5 +1,5 @@
-import { OREGON_COAST_ROUTE_ID } from "@/lib/catalog/catalog-routes";
-import { loadRouteCatalog } from "@/lib/catalog/repository";
+import { PUBLISHED_CATALOG_ROUTE_IDS } from "@/lib/catalog/catalog-routes";
+import { loadRouteCatalogs } from "@/lib/catalog/repository";
 import { loadRoutableDestinations } from "@/lib/trips/repository";
 import {
   calculateLiveRouteAccessEstimates,
@@ -32,9 +32,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const [destinations, oregonCoastCatalog] = await Promise.all([
+    const [destinations, routeCatalogs] = await Promise.all([
       loadRoutableDestinations(),
-      loadRouteCatalog(OREGON_COAST_ROUTE_ID),
+      loadRouteCatalogs(PUBLISHED_CATALOG_ROUTE_IDS),
     ]);
     const [result, routeAccess] = await Promise.all([
       calculateLiveRouteEstimates({
@@ -42,11 +42,11 @@ export async function POST(request: Request) {
         origin: body.origin,
         destinations,
       }),
-      oregonCoastCatalog
+      routeCatalogs.length > 0
         ? calculateLiveRouteAccessEstimates({
             accessToken,
             origin: body.origin,
-            areas: oregonCoastCatalog.areas,
+            areas: routeCatalogs.flatMap((catalog) => catalog.areas),
           })
         : Promise.resolve([]),
     ]);

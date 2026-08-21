@@ -29,6 +29,18 @@ import {
   oregonCoastStops,
   sourceForOregonCoastStop,
 } from "./catalog/oregon-coast";
+import {
+  NORTH_CASCADES_REVIEW_DUE_ON,
+  NORTH_CASCADES_VERIFIED_ON,
+  northCascadesSr20Areas,
+  northCascadesSr20HikeDetails,
+  northCascadesSr20Route,
+  northCascadesSr20RouteLegs,
+  northCascadesSr20Sources,
+  northCascadesSr20Stops,
+  sourceForNorthCascadesSr20Area,
+  sourceForNorthCascadesSr20Stop,
+} from "./catalog/north-cascades-sr20";
 
 const preferenceSeeds = [
   { id: "ocean", label: "Ocean", sortOrder: 1 },
@@ -716,240 +728,196 @@ await database
     },
   });
 
-const oregonCoastAreaIds = oregonCoastAreas.map((area) => area.id);
-const oregonCoastStopIds = oregonCoastStops.map((stop) => stop.id);
+const routeCatalogSeeds = [
+  {
+    route: oregonCoastRoute,
+    areas: oregonCoastAreas,
+    stops: oregonCoastStops,
+    hikeDetails: [],
+    sources: oregonCoastSources,
+    legs: oregonCoastRouteLegs,
+    regionCode: "OR",
+    verifiedOn: CATALOG_VERIFIED_ON,
+    reviewDueOn: CATALOG_REVIEW_DUE_ON,
+    sourceForArea: () => "travel-oregon-coast-overview",
+    sourceForStop: sourceForOregonCoastStop,
+    routeEvidence: [
+      {
+        sourceId: "travel-oregon-pacific-coast-byway",
+        note: "Travel Oregon documents the Pacific Coast Scenic Byway as the state-spanning coastal road route.",
+      },
+    ],
+  },
+  {
+    route: northCascadesSr20Route,
+    areas: northCascadesSr20Areas,
+    stops: northCascadesSr20Stops,
+    hikeDetails: northCascadesSr20HikeDetails,
+    sources: northCascadesSr20Sources,
+    legs: northCascadesSr20RouteLegs,
+    regionCode: "WA",
+    verifiedOn: NORTH_CASCADES_VERIFIED_ON,
+    reviewDueOn: NORTH_CASCADES_REVIEW_DUE_ON,
+    sourceForArea: sourceForNorthCascadesSr20Area,
+    sourceForStop: sourceForNorthCascadesSr20Stop,
+    routeEvidence: [
+      {
+        sourceId: "nps-north-cascades-highway",
+        note: "The National Park Service documents the North Cascades Highway corridor, including Newhalem and Diablo Lake overlooks.",
+      },
+      {
+        sourceId: "wsdot-sr20-seasonal-closure",
+        note: "SR-20 over the North Cascades is a seasonal highway; current conditions and closure dates must be checked before departure.",
+      },
+    ],
+  },
+] as const;
 
-await database
-  .insert(routes)
-  .values({
-    ...oregonCoastRoute,
-    published: true,
-    lastVerifiedAt: CATALOG_VERIFIED_ON,
-    reviewDueAt: CATALOG_REVIEW_DUE_ON,
-    updatedAt: now,
-  })
-  .onConflictDoUpdate({
-    target: routes.id,
-    set: {
-      slug: sql`excluded.slug`,
-      name: sql`excluded.name`,
-      shape: sql`excluded.shape`,
-      countryCode: sql`excluded.country_code`,
-      minDays: sql`excluded.min_days`,
-      maxDays: sql`excluded.max_days`,
-      summary: sql`excluded.summary`,
-      published: sql`excluded.published`,
-      lastVerifiedAt: sql`excluded.last_verified_at`,
-      reviewDueAt: sql`excluded.review_due_at`,
+for (const catalog of routeCatalogSeeds) {
+  const areaIds = catalog.areas.map((area) => area.id);
+  const stopIds = catalog.stops.map((stop) => stop.id);
+
+  await database
+    .insert(routes)
+    .values({
+      ...catalog.route,
+      published: true,
+      lastVerifiedAt: catalog.verifiedOn,
+      reviewDueAt: catalog.reviewDueOn,
       updatedAt: now,
-    },
-  });
+    })
+    .onConflictDoUpdate({
+      target: routes.id,
+      set: {
+        slug: sql`excluded.slug`,
+        name: sql`excluded.name`,
+        shape: sql`excluded.shape`,
+        countryCode: sql`excluded.country_code`,
+        minDays: sql`excluded.min_days`,
+        maxDays: sql`excluded.max_days`,
+        summary: sql`excluded.summary`,
+        published: sql`excluded.published`,
+        lastVerifiedAt: sql`excluded.last_verified_at`,
+        reviewDueAt: sql`excluded.review_due_at`,
+        updatedAt: now,
+      },
+    });
 
-await database
-  .insert(areas)
-  .values(
-    oregonCoastAreas.map((area) => ({
+  await database
+    .insert(areas)
+    .values(catalog.areas.map((area) => ({
       ...area,
       countryCode: "US",
-      regionCode: "OR",
+      regionCode: catalog.regionCode,
       published: true,
-      lastVerifiedAt: CATALOG_VERIFIED_ON,
-      reviewDueAt: CATALOG_REVIEW_DUE_ON,
+      lastVerifiedAt: catalog.verifiedOn,
+      reviewDueAt: catalog.reviewDueOn,
       updatedAt: now,
-    })),
-  )
-  .onConflictDoUpdate({
-    target: areas.id,
-    set: {
-      slug: sql`excluded.slug`,
-      name: sql`excluded.name`,
-      kind: sql`excluded.kind`,
-      countryCode: sql`excluded.country_code`,
-      regionCode: sql`excluded.region_code`,
-      latitude: sql`excluded.latitude`,
-      longitude: sql`excluded.longitude`,
-      summary: sql`excluded.summary`,
-      published: sql`excluded.published`,
-      lastVerifiedAt: sql`excluded.last_verified_at`,
-      reviewDueAt: sql`excluded.review_due_at`,
-      updatedAt: now,
-    },
-  });
+    })))
+    .onConflictDoUpdate({
+      target: areas.id,
+      set: {
+        slug: sql`excluded.slug`, name: sql`excluded.name`, kind: sql`excluded.kind`,
+        countryCode: sql`excluded.country_code`, regionCode: sql`excluded.region_code`,
+        latitude: sql`excluded.latitude`, longitude: sql`excluded.longitude`,
+        summary: sql`excluded.summary`, published: sql`excluded.published`,
+        lastVerifiedAt: sql`excluded.last_verified_at`, reviewDueAt: sql`excluded.review_due_at`, updatedAt: now,
+      },
+    });
 
-await database
-  .insert(stops)
-  .values(
-    oregonCoastStops.map((stop) => {
+  await database
+    .insert(stops)
+    .values(catalog.stops.map((stop) => {
       const { areaId, preferences: stopPreferenceIds, ...catalogStop } = stop;
-
       void areaId;
       void stopPreferenceIds;
-
       return {
         ...catalogStop,
         bookingRequired: false,
         published: true,
-        lastVerifiedAt: CATALOG_VERIFIED_ON,
-        reviewDueAt: CATALOG_REVIEW_DUE_ON,
+        lastVerifiedAt: catalog.verifiedOn,
+        reviewDueAt: catalog.reviewDueOn,
         updatedAt: now,
       };
-    }),
-  )
-  .onConflictDoUpdate({
-    target: stops.id,
-    set: {
-      slug: sql`excluded.slug`,
-      name: sql`excluded.name`,
-      kind: sql`excluded.kind`,
-      latitude: sql`excluded.latitude`,
-      longitude: sql`excluded.longitude`,
-      typicalDurationMinutes: sql`excluded.typical_duration_minutes`,
-      indoorOutdoor: sql`excluded.indoor_outdoor`,
-      childFit: sql`excluded.child_fit`,
-      bookingRequired: sql`excluded.booking_required`,
-      weatherSensitivity: sql`excluded.weather_sensitivity`,
-      summary: sql`excluded.summary`,
-      published: sql`excluded.published`,
-      lastVerifiedAt: sql`excluded.last_verified_at`,
-      reviewDueAt: sql`excluded.review_due_at`,
-      updatedAt: now,
-    },
-  });
+    }))
+    .onConflictDoUpdate({
+      target: stops.id,
+      set: {
+        slug: sql`excluded.slug`, name: sql`excluded.name`, kind: sql`excluded.kind`,
+        latitude: sql`excluded.latitude`, longitude: sql`excluded.longitude`,
+        typicalDurationMinutes: sql`excluded.typical_duration_minutes`, indoorOutdoor: sql`excluded.indoor_outdoor`,
+        childFit: sql`excluded.child_fit`, bookingRequired: sql`excluded.booking_required`,
+        weatherSensitivity: sql`excluded.weather_sensitivity`, summary: sql`excluded.summary`,
+        published: sql`excluded.published`, lastVerifiedAt: sql`excluded.last_verified_at`,
+        reviewDueAt: sql`excluded.review_due_at`, updatedAt: now,
+      },
+    });
 
-await database
-  .delete(catalogEvidence)
-  .where(
-    or(
-      inArray(catalogEvidence.areaId, oregonCoastAreaIds),
-      inArray(catalogEvidence.stopId, oregonCoastStopIds),
-      inArray(catalogEvidence.routeId, [oregonCoastRoute.id]),
-    ),
-  );
+  await database.delete(catalogEvidence).where(or(
+    inArray(catalogEvidence.areaId, areaIds),
+    inArray(catalogEvidence.stopId, stopIds),
+    inArray(catalogEvidence.routeId, [catalog.route.id]),
+  ));
+  await database.delete(routeWaypoints).where(inArray(routeWaypoints.routeId, [catalog.route.id]));
+  await database.delete(routeLegs).where(inArray(routeLegs.routeId, [catalog.route.id]));
+  await database.delete(areaStops).where(inArray(areaStops.areaId, areaIds));
+  await database.delete(stopPreferences).where(inArray(stopPreferences.stopId, stopIds));
+  await database.delete(hikeDetails).where(inArray(hikeDetails.stopId, stopIds));
 
-await database
-  .delete(routeWaypoints)
-  .where(inArray(routeWaypoints.routeId, [oregonCoastRoute.id]));
+  await database
+    .insert(catalogSources)
+    .values(catalog.sources.map((source) => ({
+      ...source, lastCheckedAt: catalog.verifiedOn, status: "active", updatedAt: now,
+    })))
+    .onConflictDoUpdate({
+      target: catalogSources.id,
+      set: {
+        title: sql`excluded.title`, url: sql`excluded.url`, publisherType: sql`excluded.publisher_type`,
+        lastCheckedAt: sql`excluded.last_checked_at`, status: sql`excluded.status`, updatedAt: now,
+      },
+    });
 
-await database
-  .delete(routeLegs)
-  .where(inArray(routeLegs.routeId, [oregonCoastRoute.id]));
-
-await database
-  .delete(areaStops)
-  .where(inArray(areaStops.areaId, oregonCoastAreaIds));
-
-await database
-  .delete(stopPreferences)
-  .where(inArray(stopPreferences.stopId, oregonCoastStopIds));
-
-await database
-  .delete(hikeDetails)
-  .where(inArray(hikeDetails.stopId, oregonCoastStopIds));
-
-await database
-  .insert(catalogSources)
-  .values(
-    oregonCoastSources.map((source) => ({
-      ...source,
-      lastCheckedAt: CATALOG_VERIFIED_ON,
-      status: "active",
-      updatedAt: now,
-    })),
-  )
-  .onConflictDoUpdate({
-    target: catalogSources.id,
-    set: {
-      title: sql`excluded.title`,
-      url: sql`excluded.url`,
-      publisherType: sql`excluded.publisher_type`,
-      lastCheckedAt: sql`excluded.last_checked_at`,
-      status: sql`excluded.status`,
-      updatedAt: now,
-    },
-  });
-
-await database.insert(areaStops).values(
-  oregonCoastStops.map((stop) => ({
-    areaId: stop.areaId,
-    stopId: stop.id,
-    role: "primary",
-  })),
-);
-
-await database.insert(stopPreferences).values(
-  oregonCoastStops.flatMap((stop) =>
+  await database.insert(areaStops).values(catalog.stops.map((stop) => ({
+    areaId: stop.areaId, stopId: stop.id, role: "primary",
+  })));
+  await database.insert(stopPreferences).values(catalog.stops.flatMap((stop) =>
     stop.preferences.map((preferenceId, index) => ({
-      stopId: stop.id,
-      preferenceId,
-      strength: index === 0 ? "primary" : "secondary",
+      stopId: stop.id, preferenceId, strength: index === 0 ? "primary" : "secondary",
     })),
-  ),
-);
+  ));
+  if (catalog.hikeDetails.length > 0) {
+    await database.insert(hikeDetails).values([...catalog.hikeDetails]);
+  }
 
-const oregonCoastRouteWaypoints = oregonCoastAreas.flatMap((area, areaIndex) => [
-  {
-    routeId: oregonCoastRoute.id,
-    position: areaIndex * 10 + 1,
-    areaId: area.id,
-    role: areaIndex === 0 ? "gateway" : "overnight",
-    optional: false,
-  },
-  ...oregonCoastStops
-    .filter((stop) => stop.areaId === area.id)
-    .map((stop, stopIndex) => ({
-      routeId: oregonCoastRoute.id,
-      position: areaIndex * 10 + stopIndex + 2,
-      stopId: stop.id,
-      role: stopIndex === 0 ? "anchor" : "detour",
-      optional: stopIndex > 0,
+  await database.insert(routeWaypoints).values(catalog.areas.flatMap((area, areaIndex) => [
+    { routeId: catalog.route.id, position: areaIndex * 10 + 1, areaId: area.id, role: areaIndex === 0 ? "gateway" : "overnight", optional: false },
+    ...catalog.stops.filter((stop) => stop.areaId === area.id).map((stop, stopIndex) => ({
+      routeId: catalog.route.id, position: areaIndex * 10 + stopIndex + 2, stopId: stop.id,
+      role: stopIndex === 0 ? "anchor" : "detour", optional: stopIndex > 0,
     })),
-]);
-
-await database.insert(routeWaypoints).values(oregonCoastRouteWaypoints);
-
-await database.insert(routeLegs).values(
-  oregonCoastRouteLegs.map((leg) => ({
-    ...leg,
-    routeId: oregonCoastRoute.id,
-    sourceType: "curated",
-    lastVerifiedAt: CATALOG_VERIFIED_ON,
-    reviewDueAt: CATALOG_REVIEW_DUE_ON,
-  })),
-);
-
-await database.insert(catalogEvidence).values([
-  {
-    sourceId: "travel-oregon-pacific-coast-byway",
-    routeId: oregonCoastRoute.id,
-    claimType: "route_scope",
-    note: "Travel Oregon documents the Pacific Coast Scenic Byway as the state-spanning coastal road route.",
-    confidence: "high",
-    verifiedAt: CATALOG_VERIFIED_ON,
-    reviewDueAt: CATALOG_REVIEW_DUE_ON,
-    updatedAt: now,
-  },
-  ...oregonCoastAreas.map((area) => ({
-    sourceId: "travel-oregon-coast-overview",
-    areaId: area.id,
-    claimType: "area_scope",
-    note: "Included as a curated overnight or planning area on the Oregon Coast pilot route.",
-    confidence: "medium",
-    verifiedAt: CATALOG_VERIFIED_ON,
-    reviewDueAt: CATALOG_REVIEW_DUE_ON,
-    updatedAt: now,
-  })),
-  ...oregonCoastStops.map((stop) => ({
-    sourceId: sourceForOregonCoastStop(stop.id),
-    stopId: stop.id,
-    claimType: "visitor_anchor",
-    note: "Included as a curated anchor or optional detour for the Oregon Coast pilot route.",
-    confidence: "medium",
-    verifiedAt: CATALOG_VERIFIED_ON,
-    reviewDueAt: CATALOG_REVIEW_DUE_ON,
-    updatedAt: now,
-  })),
-]);
+  ]));
+  await database.insert(routeLegs).values(catalog.legs.map((leg) => ({
+    ...leg, routeId: catalog.route.id, sourceType: "curated",
+    lastVerifiedAt: catalog.verifiedOn, reviewDueAt: catalog.reviewDueOn,
+  })));
+  await database.insert(catalogEvidence).values([
+    ...catalog.routeEvidence.map((evidence) => ({
+      ...evidence, routeId: catalog.route.id, claimType: "route_scope", confidence: "high",
+      verifiedAt: catalog.verifiedOn, reviewDueAt: catalog.reviewDueOn, updatedAt: now,
+    })),
+    ...catalog.areas.map((area) => ({
+      sourceId: catalog.sourceForArea(area.id), areaId: area.id, claimType: "area_scope",
+      note: `Included as a curated planning area on ${catalog.route.name}.`, confidence: "medium",
+      verifiedAt: catalog.verifiedOn, reviewDueAt: catalog.reviewDueOn, updatedAt: now,
+    })),
+    ...catalog.stops.map((stop) => ({
+      sourceId: catalog.sourceForStop(stop.id), stopId: stop.id, claimType: "visitor_anchor",
+      note: `Included as a curated anchor or optional detour on ${catalog.route.name}.`, confidence: "medium",
+      verifiedAt: catalog.verifiedOn, reviewDueAt: catalog.reviewDueOn, updatedAt: now,
+    })),
+  ]);
+}
 
 console.log(
-  `Seeded ${destinationSeeds.length} destinations, ${oregonCoastAreas.length} Oregon Coast areas, and ${oregonCoastStops.length} Oregon Coast stops.`,
+  `Seeded ${destinationSeeds.length} destinations and ${routeCatalogSeeds.map((catalog) => `${catalog.areas.length} areas / ${catalog.stops.length} stops for ${catalog.route.name}`).join("; ")}.`,
 );

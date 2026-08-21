@@ -20,7 +20,7 @@ export async function loadRouteCatalog(
   const database = getDatabase();
   const [routeRows, areaRows, legRows, stopRows, sourceRows] = await Promise.all([
     database
-      .select({ id: routes.id, name: routes.name, summary: routes.summary })
+      .select({ id: routes.id, name: routes.name, shape: routes.shape, summary: routes.summary })
       .from(routes)
       .where(and(eq(routes.id, routeId), eq(routes.published, true))),
     database
@@ -115,6 +115,7 @@ export async function loadRouteCatalog(
   return {
     id: route.id,
     name: route.name,
+    shape: route.shape as RouteCatalog["shape"],
     summary: route.summary,
     sourceReferences: sourceRows.map((source) => ({
       ...source,
@@ -128,4 +129,9 @@ export async function loadRouteCatalog(
     stops: [...stopsById.values()],
     legs: legRows,
   };
+}
+
+export async function loadRouteCatalogs(routeIds: readonly string[]) {
+  const catalogs = await Promise.all(routeIds.map((routeId) => loadRouteCatalog(routeId)));
+  return catalogs.filter((catalog): catalog is RouteCatalog => catalog !== null);
 }

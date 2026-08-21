@@ -123,9 +123,9 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       </header>
 
       <section className="detail-hero">
-        <p className="eyebrow">{catalog.name}</p>
+        <p className="eyebrow">{catalog.shape === "loop" ? "Loop route" : "Route"} · {catalog.name}</p>
         <h1>{idea.title}</h1>
-        <p>A {sharedPlannerState.days}-day coastal idea from {idea.startArea.name} to {idea.endArea.name}, with room to choose the anchors that suit the trip.</p>
+        <p>A {sharedPlannerState.days}-day route idea from {idea.startArea.name} to {idea.endArea.name}, with room to choose the anchors that suit the trip.</p>
         <div className="detail-tags">
           <span>{sharedPlannerState.days} days</span>
           <span>{formatPace(sharedPlannerState.pace)}</span>
@@ -148,7 +148,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
         <div className="detail-story">
           <section className="trip-detail-map-section">
             <p className="eyebrow">The route</p>
-            <h2>One connected stretch of coast.</h2>
+            <h2>One connected route, in order.</h2>
             <TripIdeaMap accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN} areas={tripAreas} />
             <p className="trip-map-caption">The map shows the ordered area sequence, not turn-by-turn navigation.</p>
           </section>

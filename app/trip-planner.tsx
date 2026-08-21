@@ -35,6 +35,8 @@ import { InteractiveMap } from "./interactive-map";
 
 type TripPlannerProps = {
   catalog: DestinationCatalog;
+  routeCatalogs?: readonly RouteCatalog[];
+  /** @deprecated Kept briefly so existing focused planner tests remain readable. */
   oregonCoastCatalog?: RouteCatalog | null;
   currentUser?: CurrentUser | null;
   initialVisitedDestinationIds?: readonly string[];
@@ -148,6 +150,7 @@ const defaultOrigin: ResolvedOrigin = {
 
 export function TripPlanner({
   catalog,
+  routeCatalogs: initialRouteCatalogs = [],
   oregonCoastCatalog = null,
   currentUser = null,
   initialVisitedDestinationIds = [],
@@ -155,6 +158,14 @@ export function TripPlanner({
   initialSearch = "",
   mapboxAccessToken,
 }: TripPlannerProps) {
+  const routeCatalogs = useMemo(
+    () => initialRouteCatalogs.length > 0
+      ? initialRouteCatalogs
+      : oregonCoastCatalog
+        ? [oregonCoastCatalog]
+        : [],
+    [initialRouteCatalogs, oregonCoastCatalog],
+  );
   const { destinations, preferenceOptions } = catalog;
   const [plannerState, dispatch] = useReducer(
     plannerReducer,
@@ -248,33 +259,35 @@ export function TripPlanner({
       ),
     [destinationsReadyForTripLength, appliedPlannerState, visitedDestinationIds],
   );
-  const oregonCoastIdeas = useMemo(
+  const catalogRouteIdeas = useMemo(
     () => {
-      if (!oregonCoastCatalog || !liveRouteResult) return [];
+      if (routeCatalogs.length === 0 || !liveRouteResult) return [];
 
       const maximumTravelDayMinutes = appliedPlannerState.maxDriveHours * 60;
-      return composeTripIdeas(oregonCoastCatalog, {
-        days: appliedPlannerState.days,
-        pace: appliedPlannerState.pace,
-        preferences: appliedPlannerState.preferences,
-        travelingWithChildren: appliedPlannerState.travelingWithChildren,
-      }).flatMap((idea) => {
-        const outboundAccess = liveRouteAccessByAreaId.get(idea.startArea.id);
-        const returnAccess = liveRouteAccessByAreaId.get(idea.endArea.id);
+      return routeCatalogs.flatMap((catalog) =>
+        composeTripIdeas(catalog, {
+          days: appliedPlannerState.days,
+          pace: appliedPlannerState.pace,
+          preferences: appliedPlannerState.preferences,
+          travelingWithChildren: appliedPlannerState.travelingWithChildren,
+        }).flatMap((idea) => {
+          const outboundAccess = liveRouteAccessByAreaId.get(idea.startArea.id);
+          const returnAccess = liveRouteAccessByAreaId.get(idea.endArea.id);
 
-        if (
-          !outboundAccess ||
-          !returnAccess ||
-          outboundAccess.outboundMinutes > maximumTravelDayMinutes ||
-          returnAccess.returnMinutes > maximumTravelDayMinutes
-        ) {
-          return [];
-        }
+          if (
+            !outboundAccess ||
+            !returnAccess ||
+            outboundAccess.outboundMinutes > maximumTravelDayMinutes ||
+            returnAccess.returnMinutes > maximumTravelDayMinutes
+          ) {
+            return [];
+          }
 
-        return [{ idea, outboundAccess, returnAccess }];
-      });
+          return [{ catalog, idea, outboundAccess, returnAccess }];
+        }),
+      );
     },
-    [appliedPlannerState, liveRouteAccessByAreaId, liveRouteResult, oregonCoastCatalog],
+    [appliedPlannerState, liveRouteAccessByAreaId, liveRouteResult, routeCatalogs],
   );
   const tripIdeas = useMemo<PlannerTripIdea[]>(() => {
     const destinationIdeas = ranked.map((destination) => {
@@ -304,12 +317,11 @@ export function TripPlanner({
         destinationId: destination.id,
       };
     });
-    const routeIdeas = oregonCoastCatalog
-      ? oregonCoastIdeas.map(({ idea, outboundAccess, returnAccess }) => ({
+    const routeIdeas = catalogRouteIdeas.map(({ catalog, idea, outboundAccess, returnAccess }) => ({
           id: `route:${idea.id}`,
-          context: "Oregon Coast",
+          context: catalog.name,
           title: idea.title,
-          summary: "A connected stretch of coast with room to choose the stops that suit the day.",
+          summary: catalog.summary ?? "A connected route with room to choose the stops that suit the day.",
           facts: [
             `${idea.areaIds.length} areas · ${idea.stops.length} stops`,
             `${formatDriveTime(outboundAccess.outboundMinutes / 60)} to ${idea.startArea.name}`,
@@ -320,16 +332,15 @@ export function TripPlanner({
             ? [`Includes ${idea.matchedPreferences.map(formatPreference).join(" and ")}.`]
             : ["Built as a connected coastal option."],
           anchors: idea.stops.slice(0, 3).map((stop) => stop.name).join(" · "),
-          routeId: oregonCoastCatalog.id,
+          routeId: catalog.id,
           startAreaId: idea.startArea.id,
           endAreaId: idea.endArea.id,
-        }))
-      : [];
+        }));
 
     return appliedPlannerState.days >= 2
       ? [...routeIdeas, ...destinationIdeas]
       : destinationIdeas;
-  }, [appliedPlannerState.days, liveRoutesByDestinationId, oregonCoastCatalog, oregonCoastIdeas, ranked]);
+  }, [appliedPlannerState.days, catalogRouteIdeas, liveRoutesByDestinationId, ranked]);
   const visibleTripIdeas = showAllIdeas ? tripIdeas : tripIdeas.slice(0, 3);
 
   const topResults = ranked.slice(0, 5);
@@ -732,6 +743,11 @@ export function TripPlanner({
             accessToken={mapboxAccessToken}
             origin={appliedOrigin}
             destinations={topResults}
+            routeLayers={routeCatalogs.map((catalog) => ({
+              id: catalog.id,
+              name: catalog.name,
+              areas: catalog.areas,
+            }))}
             selectedDestinationId={selected?.id}
             onDestinationSelect={setSelectedId}
           />

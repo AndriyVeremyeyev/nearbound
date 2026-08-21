@@ -259,6 +259,11 @@ main { min-height: 100vh; overflow: hidden; }
 .map-scale { padding: 7px 11px; border: 1px solid rgba(23,42,58,.15); border-radius: 999px; background: rgba(255,255,255,.55); font-size: 10px; font-weight: 750; }
 
 .map-canvas { position: relative; flex: 1; min-height: 570px; overflow: hidden; border: 1px solid rgba(23,42,58,.16); border-radius: 20px; background: #dce6d8; }
+.map-render { position: absolute; inset: 0; }
+.map-layer-controls { position: absolute; z-index: 2; top: 14px; left: 14px; display: flex; align-items: center; gap: 10px; padding: 9px 11px; border: 1px solid rgba(23,42,58,.15); border-radius: 12px; background: rgba(255,253,248,.94); box-shadow: 0 6px 16px rgba(23,42,58,.12); color: var(--ink); font-size: 10px; font-weight: 800; }
+.map-layer-controls > span { color: var(--ink-soft); letter-spacing: .08em; text-transform: uppercase; }
+.map-layer-controls label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.map-layer-controls input { width: 13px; height: 13px; margin: 0; accent-color: var(--teal); }
 .map-canvas .mapboxgl-ctrl-top-right { top: 10px; right: 10px; }
 .map-canvas .mapboxgl-ctrl-group { overflow: hidden; border: 1px solid rgba(23,42,58,.14); border-radius: 10px; box-shadow: 0 6px 16px rgba(23,42,58,.14); }
 .map-canvas .mapboxgl-ctrl button { width: 31px; height: 31px; }

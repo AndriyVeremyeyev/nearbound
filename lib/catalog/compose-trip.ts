@@ -28,6 +28,7 @@ export type CatalogRouteLeg = {
 export type RouteCatalog = {
   id: string;
   name: string;
+  shape?: "linear" | "loop";
   summary?: string;
   sourceReferences?: readonly CatalogRouteSourceReference[];
   areas: readonly CatalogRouteArea[];
