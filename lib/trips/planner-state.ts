@@ -1,6 +1,8 @@
 import type { Preference, TripCriteria } from "./types";
 import type { TripPace } from "@/lib/catalog/compose-trip";
 
+export const FERRY_PREFERENCE = "ferry";
+
 export type PlannerState = {
   originQuery: string;
   maxDriveHours: number;
@@ -78,16 +80,26 @@ export function plannerReducer(
     case "set-pace":
       return { ...state, pace: action.value };
     case "toggle-preference":
-      return {
-        ...state,
-        preferences: state.preferences.includes(action.preference)
+      {
+        const preferences = state.preferences.includes(action.preference)
           ? state.preferences.filter(
               (preference) => preference !== action.preference,
             )
-          : [...state.preferences, action.preference],
-      };
+          : [...state.preferences, action.preference];
+        return {
+          ...state,
+          preferences,
+          allowFerryRoutes:
+            preferences.includes(FERRY_PREFERENCE) || state.allowFerryRoutes,
+        };
+      }
     case "set-allow-ferry-routes":
-      return { ...state, allowFerryRoutes: action.value };
+      return {
+        ...state,
+        allowFerryRoutes: state.preferences.includes(FERRY_PREFERENCE)
+          ? true
+          : action.value,
+      };
     case "set-allow-border-crossings":
       return { ...state, allowBorderCrossings: action.value };
     case "set-hide-visited":

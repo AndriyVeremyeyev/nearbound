@@ -43,6 +43,15 @@ describe("planner URL state", () => {
     });
   });
 
+  it("keeps ferry routes enabled when Ferry is a shared experience", () => {
+    expect(
+      readPlannerStateFromSearch("?interests=ferry%2Clake&ferry=0"),
+    ).toMatchObject({
+      preferences: ["ferry", "lake"],
+      allowFerryRoutes: true,
+    });
+  });
+
   it("ignores invalid parameters and refuses an otherwise unrelated URL", () => {
     expect(readPlannerStateFromSearch("?days=99&drive=cat&children=yes")).toBeNull();
     expect(readPlannerStateFromSearch("?campaign=summer")).toBeNull();

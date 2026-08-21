@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useReducer, useState } from "react";
 
 import {
   createInitialPlannerState,
+  FERRY_PREFERENCE,
   plannerReducer,
   PLANNER_LIMITS,
   toTripCriteria,
@@ -362,6 +363,7 @@ export function TripPlanner({
       ? "Issaquah"
       : "Your start";
   const plannerSearch = hasShareableState ? writePlannerSearch(appliedPlannerState) : "";
+  const ferryExperienceSelected = preferences.includes(FERRY_PREFERENCE);
 
   function destinationHref(destinationId: string) {
     return `/destinations/${destinationId}${plannerSearch ? `?${plannerSearch}` : ""}`;
@@ -692,6 +694,7 @@ export function TripPlanner({
               <label className="logistics-option">
                 <input
                   type="checkbox"
+                  disabled={ferryExperienceSelected}
                   checked={allowFerryRoutes}
                   onChange={(event) =>
                     dispatch({
@@ -700,7 +703,7 @@ export function TripPlanner({
                     })
                   }
                 />
-                <span><strong>Allow ferries</strong><small>Include routes with a ferry crossing</small></span>
+                <span><strong>Allow ferries</strong><small>{ferryExperienceSelected ? "Included because Ferry is selected above" : "Include routes with a ferry crossing"}</small></span>
               </label>
               <label className="logistics-option">
                 <input

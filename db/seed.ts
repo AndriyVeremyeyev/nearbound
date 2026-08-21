@@ -44,11 +44,15 @@ import {
 
 const preferenceSeeds = [
   { id: "ocean", label: "Ocean", sortOrder: 1 },
-  { id: "animals", label: "Animals", sortOrder: 2 },
-  { id: "city", label: "City", sortOrder: 3 },
-  { id: "resort", label: "Easy resort", sortOrder: 4 },
-  { id: "mountains", label: "Mountains", sortOrder: 5 },
-  { id: "forest", label: "Forest", sortOrder: 6 },
+  { id: "lake", label: "Lake", sortOrder: 2 },
+  { id: "waterfall", label: "Waterfall", sortOrder: 3 },
+  { id: "animals", label: "Animals", sortOrder: 4 },
+  { id: "city", label: "City", sortOrder: 5 },
+  { id: "historic", label: "Historic places", sortOrder: 6 },
+  { id: "resort", label: "Easy resort", sortOrder: 7 },
+  { id: "mountains", label: "Mountains", sortOrder: 8 },
+  { id: "forest", label: "Forest", sortOrder: 9 },
+  { id: "ferry", label: "Ferry", sortOrder: 10 },
 ];
 
 type DestinationSourceSeed = Pick<
@@ -374,7 +378,7 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 156,
     usesFerry: true,
-    preferenceIds: ["animals", "ocean", "resort"],
+    preferenceIds: ["animals", "ocean", "resort", "ferry"],
     sourceReference: {
       title: "Olympic Game Farm",
       url: "https://olygamefarm.com/",
@@ -461,7 +465,7 @@ const destinationSeeds: DestinationSeed[] = [
     published: true,
     durationMinutes: 108,
     usesFerry: true,
-    preferenceIds: ["ocean", "forest", "city"],
+    preferenceIds: ["ocean", "forest", "city", "ferry"],
     sourceReference: {
       title: "Whidbey and Camano Islands",
       url: "https://whidbeycamanoislands.com/",
@@ -490,7 +494,7 @@ const destinationSeeds: DestinationSeed[] = [
       "The peninsula drive earns an overnight; do not treat this as a casual late-afternoon outing.",
     published: true,
     durationMinutes: 150,
-    preferenceIds: ["ocean", "city", "forest"],
+    preferenceIds: ["ocean", "city", "forest", "historic"],
     sourceReference: {
       title: "Enjoy Port Townsend",
       url: "https://enjoypt.com/",
@@ -548,7 +552,7 @@ const destinationSeeds: DestinationSeed[] = [
       "The drive is long for a one-night reset, and summer lodging fills early.",
     published: true,
     durationMinutes: 210,
-    preferenceIds: ["resort", "mountains", "city"],
+    preferenceIds: ["resort", "mountains", "city", "lake"],
     sourceReference: {
       title: "Lake Chelan Chamber of Commerce",
       url: "https://www.lakechelan.com/",

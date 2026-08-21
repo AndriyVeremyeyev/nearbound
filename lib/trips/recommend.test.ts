@@ -125,6 +125,20 @@ describe("recommendDestinations", () => {
     ]);
   });
 
+  it("treats a selected ferry as an experience rather than a logistics penalty", () => {
+    const [recommendation] = recommendDestinations(
+      [createDestination({ id: "whidbey", usesFerry: true, preferences: ["ferry"] })],
+      { ...defaultCriteria, preferences: ["ferry"] },
+    ).recommendations;
+
+    expect(recommendation.matchReasons).toContain("Matches all selected experiences: Ferry.");
+    expect(recommendation.scoreBreakdown.find((factor) => factor.id === "logistics")).toMatchObject({
+      score: SCORE_WEIGHTS.logistics,
+      sentiment: "strength",
+      summary: "Includes a ferry crossing as part of the trip.",
+    });
+  });
+
   it("keeps every applicable exclusion reason for explanation", () => {
     const result = recommendDestinations(
       [createDestination({ id: "difficult", hours: 4, usesFerry: true })],

@@ -1,5 +1,6 @@
 import {
   createInitialPlannerState,
+  FERRY_PREFERENCE,
   PLANNER_LIMITS,
   type PlannerState,
 } from "./planner-state";
@@ -19,11 +20,15 @@ const plannerParameterNames = [
 
 const supportedPreferences: readonly Preference[] = [
   "ocean",
+  "lake",
+  "waterfall",
   "animals",
   "city",
+  "historic",
   "resort",
   "mountains",
   "forest",
+  "ferry",
 ];
 
 const supportedPaces: readonly TripPace[] = ["easy", "balanced", "see-more"];
@@ -107,6 +112,10 @@ export function readPlannerStateFromSearch(search: string): PlannerState | null 
     }
   }
 
+  if (state.preferences.includes(FERRY_PREFERENCE)) {
+    state.allowFerryRoutes = true;
+  }
+
   return hasValidPlannerParameter ? state : null;
 }
 
@@ -125,7 +134,10 @@ export function writePlannerSearch(
   parameters.set("drive", String(state.maxDriveHours));
   parameters.set("interests", state.preferences.join(","));
   parameters.set("children", state.travelingWithChildren ? "1" : "0");
-  parameters.set("ferry", state.allowFerryRoutes ? "1" : "0");
+  parameters.set(
+    "ferry",
+    state.preferences.includes(FERRY_PREFERENCE) || state.allowFerryRoutes ? "1" : "0",
+  );
   parameters.set("border", state.allowBorderCrossings ? "1" : "0");
   parameters.set("visited", state.hideVisited ? "1" : "0");
 

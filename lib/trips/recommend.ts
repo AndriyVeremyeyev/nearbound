@@ -146,8 +146,9 @@ function buildScoreBreakdown(
           : "caution",
   };
 
+  const ferryIsPartOfThePlan = criteria.preferences.includes("ferry");
   const logisticsPenalty =
-    (destination.usesFerry ? 3 : 0) +
+    (destination.usesFerry && !ferryIsPartOfThePlan ? 3 : 0) +
     (destination.crossesBorder ? 4 : 0);
   const logisticsFactor: ScoreFactor = {
     id: "logistics",
@@ -155,7 +156,9 @@ function buildScoreBreakdown(
     score: SCORE_WEIGHTS.logistics - logisticsPenalty,
     maxScore: SCORE_WEIGHTS.logistics,
     summary:
-      destination.usesFerry && destination.crossesBorder
+      destination.usesFerry && ferryIsPartOfThePlan
+        ? "Includes a ferry crossing as part of the trip."
+        : destination.usesFerry && destination.crossesBorder
         ? "Requires both a ferry and an international border crossing."
         : destination.usesFerry
           ? "Requires a ferry crossing even when ferries are allowed."
@@ -163,7 +166,9 @@ function buildScoreBreakdown(
             ? "Requires an international border crossing."
             : "Simple route without a ferry or border crossing.",
     sentiment:
-      destination.usesFerry || destination.crossesBorder
+      destination.usesFerry && ferryIsPartOfThePlan
+        ? "strength"
+        : destination.usesFerry || destination.crossesBorder
         ? "caution"
         : "strength",
   };

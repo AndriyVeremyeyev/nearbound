@@ -63,7 +63,7 @@ export const northCascadesSr20Stops = [
     childFit: "good",
     weatherSensitivity: "medium",
     summary: "A short, low-pressure start in the historic hydroelectric town before the highway climbs into the mountains.",
-    preferences: ["city", "mountains"],
+    preferences: ["city", "mountains", "historic"],
   },
   {
     id: "diablo-lake-overlook",
@@ -78,7 +78,22 @@ export const northCascadesSr20Stops = [
     childFit: "good",
     weatherSensitivity: "high",
     summary: "A short roadside overlook above Diablo Lake that gives the route an immediate North Cascades payoff.",
-    preferences: ["mountains", "forest"],
+    preferences: ["mountains", "forest", "lake"],
+  },
+  {
+    id: "ladder-creek-falls",
+    slug: "ladder-creek-falls",
+    name: "Ladder Creek Falls",
+    kind: "viewpoint",
+    areaId: "north-cascades-newhalem-diablo",
+    latitude: 48.6737,
+    longitude: -121.2471,
+    typicalDurationMinutes: 60,
+    indoorOutdoor: "outdoor",
+    childFit: "good",
+    weatherSensitivity: "medium",
+    summary: "A short Newhalem waterfall walk behind Gorge Powerhouse, with a footbridge, forest and some steep steps.",
+    preferences: ["waterfall", "forest", "historic"],
   },
   {
     id: "blue-lake-trail",
@@ -93,7 +108,7 @@ export const northCascadesSr20Stops = [
     childFit: "possible",
     weatherSensitivity: "high",
     summary: "A 4.4-mile round-trip alpine lake hike with meaningful elevation gain; save it for a dedicated, snow-free half-day.",
-    preferences: ["mountains", "forest"],
+    preferences: ["mountains", "forest", "lake"],
   },
   {
     id: "washington-pass-overlook",
@@ -123,7 +138,7 @@ export const northCascadesSr20Stops = [
     childFit: "good",
     weatherSensitivity: "low",
     summary: "A compact Old West-style downtown for a meal, browsing and an easy transition into an overnight.",
-    preferences: ["city"],
+    preferences: ["city", "historic"],
   },
   {
     id: "spring-creek-bridge",
@@ -153,7 +168,7 @@ export const northCascadesSr20Stops = [
     childFit: "good",
     weatherSensitivity: "high",
     summary: "A lakefront reset with beach, picnic and easy walking time after the route’s mountain driving.",
-    preferences: ["resort", "mountains"],
+    preferences: ["resort", "mountains", "lake"],
   },
   {
     id: "leavenworth-waterfront-park",
@@ -186,6 +201,7 @@ export const northCascadesSr20HikeDetails = [
 
 export const northCascadesSr20Sources = [
   { id: "nps-north-cascades-highway", title: "North Cascades Highway", url: "https://home.nps.gov/noca/planyourvisit/north-cascades-highway.htm", publisherType: "government" },
+  { id: "nps-newhalem-area-trails", title: "Newhalem Area Trails", url: "https://home.nps.gov/noca/planyourvisit/newhalem-area-trails.htm", publisherType: "government" },
   { id: "nps-north-cascades-road-conditions", title: "North Cascades road conditions", url: "https://www.nps.gov/noca/planyourvisit/road-conditions.htm", publisherType: "government" },
   { id: "wsdot-sr20-seasonal-closure", title: "SR-20 North Cascades Highway seasonal closure", url: "https://wsdot.wa.gov/about/news/2025/sr-20-north-cascades-highway-closes-season-thursday-dec-4-6-pm", publisherType: "government" },
   { id: "wta-blue-lake", title: "Blue Lake", url: "https://www.wta.org/go-hiking/hikes/blue-lake", publisherType: "trail_organization" },
@@ -214,6 +230,7 @@ export const northCascadesSr20RouteLegs = [
 
 export function sourceForNorthCascadesSr20Stop(stopId: string) {
   if (["newhalem-historic-district", "diablo-lake-overlook"].includes(stopId)) return "nps-north-cascades-highway";
+  if (stopId === "ladder-creek-falls") return "nps-newhalem-area-trails";
   if (["blue-lake-trail", "washington-pass-overlook"].includes(stopId)) return "wta-blue-lake";
   if (["winthrop-western-downtown", "spring-creek-bridge"].includes(stopId)) return "winthrop-washington";
   if (stopId === "lake-chelan-state-park") return "wa-parks-lake-chelan";

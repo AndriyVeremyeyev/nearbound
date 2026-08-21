@@ -40,6 +40,29 @@ describe("plannerReducer", () => {
     expect(restored.preferences).toEqual(["animals", "ocean"]);
   });
 
+  it("makes ferries an intentional experience and keeps their route filter enabled", () => {
+    const withFerry = plannerReducer(createInitialPlannerState(), {
+      type: "toggle-preference",
+      preference: "ferry",
+    });
+    const attemptedDisable = plannerReducer(withFerry, {
+      type: "set-allow-ferry-routes",
+      value: false,
+    });
+    const withoutFerry = plannerReducer(attemptedDisable, {
+      type: "toggle-preference",
+      preference: "ferry",
+    });
+
+    expect(withFerry.preferences).toContain("ferry");
+    expect(withFerry.allowFerryRoutes).toBe(true);
+    expect(attemptedDisable.allowFerryRoutes).toBe(true);
+    expect(withoutFerry.preferences).not.toContain("ferry");
+    expect(
+      plannerReducer(withoutFerry, { type: "set-allow-ferry-routes", value: false }).allowFerryRoutes,
+    ).toBe(false);
+  });
+
   it("records whether family fit should apply without collecting party size", () => {
     const withoutChildren = plannerReducer(createInitialPlannerState(), {
       type: "set-traveling-with-children",

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 
 import {
+  FERRY_PREFERENCE,
   PLANNER_LIMITS,
   type PlannerAction,
   type PlannerState,
@@ -87,6 +88,7 @@ export function PlannerWizard({
   const [stepIndex, setStepIndex] = useState(0);
   const step = steps[stepIndex];
   const isLastStep = stepIndex === steps.length - 1;
+  const ferryExperienceSelected = state.preferences.includes(FERRY_PREFERENCE);
 
   function goForward() {
     if (isLastStep) {
@@ -296,6 +298,7 @@ export function PlannerWizard({
                   <label>
                     <input
                       type="checkbox"
+                      disabled={ferryExperienceSelected}
                       checked={state.allowFerryRoutes}
                       onChange={(event) =>
                         dispatch({
@@ -304,7 +307,7 @@ export function PlannerWizard({
                         })
                       }
                     />
-                    <span><strong>Allow ferries</strong><small>Keep ferry routes in the results</small></span>
+                    <span><strong>Allow ferries</strong><small>{ferryExperienceSelected ? "Included because Ferry is selected above" : "Keep ferry routes in the results"}</small></span>
                   </label>
                   <label>
                     <input

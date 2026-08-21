@@ -256,6 +256,23 @@ describe("Nearbound concept prototype", () => {
     expect(screen.getByText(/filtered: 1 ferry route/i)).toBeInTheDocument();
   });
 
+  it("makes Ferry an experience that keeps its logistics boundary enabled", () => {
+    const ferryCatalog: DestinationCatalog = {
+      ...catalog,
+      preferenceOptions: [...catalog.preferenceOptions, { id: "ferry", label: "Ferry" }],
+    };
+
+    render(<TripPlanner catalog={ferryCatalog} />);
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ferry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(screen.getByLabelText(/allow ferries/i)).toBeChecked();
+    expect(screen.getByLabelText(/allow ferries/i)).toBeDisabled();
+    expect(screen.getByText("Included because Ferry is selected above")).toBeInTheDocument();
+  });
+
   it("carries wizard answers into the editable workspace", () => {
     render(<TripPlanner catalog={catalog} />);
 
