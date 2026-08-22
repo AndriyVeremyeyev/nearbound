@@ -5,6 +5,9 @@ import type { Map as MapboxMap, Marker as MapboxMarker } from "mapbox-gl";
 
 import type { ResolvedOrigin } from "@/lib/trips/mapbox-search";
 import type { RankedDestination } from "@/lib/trips/types";
+import {
+  planningRegionReviewBounds,
+} from "@/lib/catalog/planning-region-drafts";
 
 export type MapRouteLayer = {
   id: string;
@@ -38,6 +41,11 @@ function destinationsWithCoordinates(destinations: readonly RankedDestination[])
 
 const routeColors = ["#167c73", "#ff6b35", "#574b90", "#3f6fa8"];
 const EMPTY_ROUTE_LAYERS: readonly MapRouteLayer[] = [];
+const planningRegionSourceId = "nearbound-planning-regions-draft-source";
+const planningRegionFillId = "nearbound-planning-regions-draft-fill";
+const planningRegionOutlineId = "nearbound-planning-regions-draft-outline";
+const planningRegionLabelId = "nearbound-planning-regions-draft-label";
+const planningRegionBoundaryApiUrl = "/api/planning-region-boundaries";
 
 function routeLayerId(routeId: string, suffix: string) {
   return `nearbound-route-${routeId}-${suffix}`;
@@ -56,10 +64,12 @@ export function InteractiveMap({
   const mapRef = useRef<MapboxMap | null>(null);
   const destinationMarkersRef = useRef<MapboxMarker[]>([]);
   const originMarkerRef = useRef<MapboxMarker | null>(null);
+  const baseBoundaryVisibilityRef = useRef(new Map<string, "none" | "visible" | undefined>());
   const selectDestinationRef = useRef(onDestinationSelect);
   const [mapReady, setMapReady] = useState(false);
   const [showPlaces, setShowPlaces] = useState(true);
   const [showRoutes, setShowRoutes] = useState(false);
+  const [showPlanningRegions, setShowPlanningRegions] = useState(false);
   const [routeGeometries, setRouteGeometries] = useState<Record<string, LoadedRouteGeometry>>({});
   const [loadingRouteIds, setLoadingRouteIds] = useState<string[]>([]);
   const [routeGeometryErrors, setRouteGeometryErrors] = useState<Record<string, string>>({});
@@ -251,6 +261,96 @@ export function InteractiveMap({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const savedBoundaryVisibility = baseBoundaryVisibilityRef.current;
+
+    if (!showPlanningRegions) {
+      savedBoundaryVisibility.forEach((currentVisibility, layerId) => {
+        if (map.getLayer(layerId)) map.setLayoutProperty(layerId, "visibility", currentVisibility ?? "visible");
+      });
+      savedBoundaryVisibility.clear();
+      return;
+    }
+
+    if (!map.getSource(planningRegionSourceId)) {
+      map.addSource(planningRegionSourceId, {
+        type: "geojson",
+        data: planningRegionBoundaryApiUrl,
+      });
+      map.addLayer({
+        id: planningRegionFillId,
+        type: "fill",
+        source: planningRegionSourceId,
+        filter: ["==", ["get", "kind"], "boundary"],
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": 0.16,
+        },
+      });
+      map.addLayer({
+        id: planningRegionOutlineId,
+        type: "line",
+        source: planningRegionSourceId,
+        filter: ["==", ["get", "kind"], "boundary"],
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 2,
+          "line-opacity": 0.9,
+        },
+      });
+      map.addLayer({
+        id: planningRegionLabelId,
+        type: "symbol",
+        source: planningRegionSourceId,
+        filter: ["==", ["get", "kind"], "label"],
+        layout: {
+          "text-field": ["get", "name"],
+          "text-size": 11,
+          "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+          "text-max-width": 9,
+          "text-allow-overlap": false,
+          "text-ignore-placement": false,
+        },
+        paint: {
+          "text-color": "#172c3d",
+          "text-halo-color": "#fffdf8",
+          "text-halo-width": 1.3,
+        },
+      });
+    }
+
+    [planningRegionFillId, planningRegionOutlineId, planningRegionLabelId].forEach((layerId) => {
+      map.setLayoutProperty(layerId, "visibility", "visible");
+    });
+
+    const baseBoundaryLayers = (map.getStyle().layers ?? []).filter((layer) =>
+      layer.id.includes("boundary") && !layer.id.startsWith("nearbound-"),
+    );
+    baseBoundaryLayers.forEach((layer) => {
+      if (!savedBoundaryVisibility.has(layer.id)) {
+        const currentVisibility = map.getLayoutProperty(layer.id, "visibility");
+        savedBoundaryVisibility.set(
+          layer.id,
+          currentVisibility === "none" || currentVisibility === "visible" ? currentVisibility : undefined,
+        );
+      }
+      map.setLayoutProperty(layer.id, "visibility", "none");
+    });
+
+    return () => {
+      savedBoundaryVisibility.forEach((currentVisibility, layerId) => {
+        if (map.getLayer(layerId)) map.setLayoutProperty(layerId, "visibility", currentVisibility ?? "visible");
+      });
+      savedBoundaryVisibility.clear();
+      [planningRegionLabelId, planningRegionOutlineId, planningRegionFillId].forEach((layerId) => {
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+      });
+      if (map.getSource(planningRegionSourceId)) map.removeSource(planningRegionSourceId);
+    };
+  }, [mapReady, showPlanningRegions]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || !accessToken || !mapReady) return;
 
     let disposed = false;
@@ -295,7 +395,12 @@ export function InteractiveMap({
         }));
       }
 
-      if ((showResultPlaces && showPlaces) || visibleRoutes.length > 0) {
+      if (showPlanningRegions) {
+        bounds.extend([planningRegionReviewBounds.west, planningRegionReviewBounds.south]);
+        bounds.extend([planningRegionReviewBounds.east, planningRegionReviewBounds.north]);
+      }
+
+      if ((showResultPlaces && showPlaces) || visibleRoutes.length > 0 || showPlanningRegions) {
         map.fitBounds(bounds, { padding: 72, maxZoom: 8.7, duration: 0 });
       } else {
         map.easeTo({ center: [origin.longitude, origin.latitude], zoom: 8, duration: 0 });
@@ -305,7 +410,7 @@ export function InteractiveMap({
     return () => {
       disposed = true;
     };
-  }, [accessToken, destinations, mapReady, origin, routeLayers, selectedDestinationId, showPlaces, showResultPlaces, showRoutes]);
+  }, [accessToken, destinations, mapReady, origin, routeLayers, selectedDestinationId, showPlaces, showPlanningRegions, showResultPlaces, showRoutes]);
 
   if (!accessToken) {
     return (
@@ -346,6 +451,14 @@ export function InteractiveMap({
                 : "Routes"}
           </label>
         )}
+        <label>
+          <input
+            type="checkbox"
+            checked={showPlanningRegions}
+            onChange={(event) => setShowPlanningRegions(event.target.checked)}
+          />
+          Planning geography (review)
+        </label>
       </div>
       <div className="map-render" ref={containerRef} />
     </div>

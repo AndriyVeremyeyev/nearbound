@@ -1,4 +1,4 @@
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 
 import {
   areaStops,
@@ -19,7 +19,7 @@ export async function loadRouteCatalog(
   routeId: string,
 ): Promise<RouteCatalog | null> {
   const database = getDatabase();
-  const [routeRows, areaRows, legRows, stopRows, sourceRows, tripPlanRows] = await Promise.all([
+  const [routeRows, areaRows, legRows, sourceRows, tripPlanRows] = await Promise.all([
     database
       .select({ id: routes.id, name: routes.name, shape: routes.shape, summary: routes.summary })
       .from(routes)
@@ -55,28 +55,6 @@ export async function loadRouteCatalog(
       .orderBy(asc(routeLegs.position)),
     database
       .select({
-        id: stops.id,
-        areaId: areaStops.areaId,
-        name: stops.name,
-        typicalDurationMinutes: stops.typicalDurationMinutes,
-        childFit: stops.childFit,
-        summary: stops.summary,
-        preferenceId: stopPreferences.preferenceId,
-      })
-      .from(routeWaypoints)
-      .innerJoin(stops, eq(routeWaypoints.stopId, stops.id))
-      .innerJoin(areaStops, eq(areaStops.stopId, stops.id))
-      .leftJoin(stopPreferences, eq(stopPreferences.stopId, stops.id))
-      .where(
-        and(
-          eq(routeWaypoints.routeId, routeId),
-          isNotNull(routeWaypoints.stopId),
-          eq(stops.published, true),
-        ),
-      )
-      .orderBy(asc(routeWaypoints.position)),
-    database
-      .select({
         title: catalogSources.title,
         url: catalogSources.url,
         publisherType: catalogSources.publisherType,
@@ -103,6 +81,25 @@ export async function loadRouteCatalog(
   const route = routeRows[0];
 
   if (!route) return null;
+
+  const routeAreaIds = areaRows.map((area) => area.id);
+  const stopRows = routeAreaIds.length === 0
+    ? []
+    : await database
+      .select({
+        id: stops.id,
+        areaId: areaStops.areaId,
+        name: stops.name,
+        typicalDurationMinutes: stops.typicalDurationMinutes,
+        childFit: stops.childFit,
+        summary: stops.summary,
+        preferenceId: stopPreferences.preferenceId,
+      })
+      .from(areaStops)
+      .innerJoin(stops, eq(areaStops.stopId, stops.id))
+      .leftJoin(stopPreferences, eq(stopPreferences.stopId, stops.id))
+      .where(and(inArray(areaStops.areaId, routeAreaIds), eq(stops.published, true)))
+      .orderBy(asc(areaStops.areaId), asc(stops.name));
 
   const stopsById = new Map<
     string,

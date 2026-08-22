@@ -1050,13 +1050,13 @@ for (const catalog of routeCatalogSeeds) {
     await database.insert(hikeDetails).values([...catalog.hikeDetails]);
   }
 
-  await database.insert(routeWaypoints).values(catalog.areas.flatMap((area, areaIndex) => [
-    { routeId: catalog.route.id, position: areaIndex * 10 + 1, areaId: area.id, role: areaIndex === 0 ? "gateway" : "overnight", optional: false },
-    ...catalog.stops.filter((stop) => stop.areaId === area.id).map((stop, stopIndex) => ({
-      routeId: catalog.route.id, position: areaIndex * 10 + stopIndex + 2, stopId: stop.id,
-      role: stopIndex === 0 ? "anchor" : "detour", optional: stopIndex > 0,
-    })),
-  ]));
+  await database.insert(routeWaypoints).values(catalog.areas.map((area, areaIndex) => ({
+    routeId: catalog.route.id,
+    position: areaIndex + 1,
+    areaId: area.id,
+    role: areaIndex === 0 ? "gateway" : "overnight",
+    optional: false,
+  })));
   await database.insert(routeLegs).values(catalog.legs.map((leg) => ({
     ...leg, routeId: catalog.route.id, sourceType: "curated",
     lastVerifiedAt: catalog.verifiedOn, reviewDueAt: catalog.reviewDueOn,

@@ -39,7 +39,7 @@ if (publishedRoutes.length === 0) {
   let legCount = 0;
 
   for (const route of publishedRoutes) {
-    const [areaRows, stopRows, legRows] = await Promise.all([
+    const [areaRows, legRows] = await Promise.all([
       database
         .select({
           id: areas.id,
@@ -60,27 +60,6 @@ if (publishedRoutes.length === 0) {
         .orderBy(asc(routeWaypoints.position)),
       database
         .select({
-          id: stops.id,
-          name: stops.name,
-          latitude: stops.latitude,
-          longitude: stops.longitude,
-          typicalDurationMinutes: stops.typicalDurationMinutes,
-          lastVerifiedAt: stops.lastVerifiedAt,
-          reviewDueAt: stops.reviewDueAt,
-          areaId: areaStops.areaId,
-        })
-        .from(routeWaypoints)
-        .innerJoin(stops, eq(routeWaypoints.stopId, stops.id))
-        .leftJoin(areaStops, eq(areaStops.stopId, stops.id))
-        .where(
-          and(
-            eq(routeWaypoints.routeId, route.id),
-            isNotNull(routeWaypoints.stopId),
-          ),
-        )
-        .orderBy(asc(routeWaypoints.position)),
-      database
-        .select({
           fromAreaId: routeLegs.fromAreaId,
           toAreaId: routeLegs.toAreaId,
           distanceMiles: routeLegs.distanceMiles,
@@ -94,6 +73,23 @@ if (publishedRoutes.length === 0) {
     ]);
 
     const areaIds = areaRows.map((area) => area.id);
+    const stopRows = areaIds.length === 0
+      ? []
+      : await database
+        .select({
+          id: stops.id,
+          name: stops.name,
+          latitude: stops.latitude,
+          longitude: stops.longitude,
+          typicalDurationMinutes: stops.typicalDurationMinutes,
+          lastVerifiedAt: stops.lastVerifiedAt,
+          reviewDueAt: stops.reviewDueAt,
+          areaId: areaStops.areaId,
+        })
+        .from(areaStops)
+        .innerJoin(stops, eq(areaStops.stopId, stops.id))
+        .where(inArray(areaStops.areaId, areaIds))
+        .orderBy(asc(areaStops.areaId), asc(stops.name));
     const stopIds = [...new Set(stopRows.map((stop) => stop.id))];
     const evidenceConditions = [eq(catalogEvidence.routeId, route.id)];
     if (areaIds.length > 0) evidenceConditions.push(inArray(catalogEvidence.areaId, areaIds));
