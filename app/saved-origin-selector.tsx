@@ -36,8 +36,7 @@ export function SavedOriginSelector({
 
   return (
     <div className="saved-origin-selector">
-      <span className="field-label">Saved starting points</span>
-      <div>
+      <div aria-label="Saved starting points">
         {origins.map((origin) => (
           <button key={origin.id} type="button" disabled={loadingId !== null} onClick={() => void selectOrigin(origin.id)}>
             {loadingId === origin.id ? "Confirming…" : origin.label}

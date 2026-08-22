@@ -173,11 +173,10 @@ main { min-height: 100vh; overflow: hidden; }
 }
 
 .planner-card { padding: 36px; border-right: 1px solid var(--line); }
-.workspace-actions { display: flex; justify-content: flex-end; gap: 12px; margin: -14px 0 20px; }
-.workspace-actions button { padding: 0; border: 0; background: transparent; color: var(--teal); cursor: pointer; font-size: 10px; font-weight: 800; }
-.workspace-actions button:last-child { color: var(--ink-soft); }
-.section-heading { display: flex; gap: 15px; align-items: flex-start; padding-bottom: 26px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
-.section-heading > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); font-size: 11px; font-weight: 800; }
+.workspace-actions { display: flex; justify-content: flex-end; margin: -14px 0 20px; }
+.workspace-actions button { padding: 0; border: 0; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 10px; font-weight: 800; }
+.workspace-actions button:hover { color: var(--teal); }
+.section-heading { padding-bottom: 26px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
 .section-heading p { margin: 0 0 4px; font-size: 20px; font-weight: 800; letter-spacing: -.035em; }
 .section-heading small { color: var(--ink-soft); font-size: 12px; }
 
@@ -291,10 +290,18 @@ main { min-height: 100vh; overflow: hidden; }
 .results-heading h2 { margin: 0; font-size: clamp(46px, 5vw, 76px); line-height: .95; letter-spacing: -.06em; }
 .results-heading > p { margin: 0; color: var(--ink-soft); font-size: 16px; line-height: 1.55; }
 .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.trip-idea-card { position: relative; display: flex; flex-direction: column; padding: 30px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,254,249,.62); transition: background .2s ease, border-color .2s ease, transform .2s ease; }
+.trip-idea-card { position: relative; display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,254,249,.62); transition: background .2s ease, border-color .2s ease, transform .2s ease; }
 .trip-idea-card[role="link"] { cursor: pointer; }
 .trip-idea-card.selected, .trip-idea-card[role="link"]:hover { border-color: rgba(29,122,113,.42); background: var(--white); }
 .trip-idea-card[role="link"]:hover { transform: translateY(-2px); }
+.trip-idea-media { position: relative; aspect-ratio: 16 / 7; min-height: 164px; margin: 0; overflow: hidden; background: var(--ink); }
+.trip-idea-media img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .35s ease; }
+.trip-idea-card[role="link"]:hover .trip-idea-media img { transform: scale(1.035); }
+.trip-idea-media::after { content: ""; position: absolute; inset: 50% 0 0; background: linear-gradient(transparent, rgba(13,34,47,.58)); pointer-events: none; }
+.trip-idea-media figcaption { position: absolute; z-index: 1; right: 14px; bottom: 10px; margin: 0; color: rgba(255,255,255,.88); font-size: 9px; font-weight: 750; letter-spacing: .02em; }
+.trip-idea-media a { color: inherit; text-decoration: none; }
+.trip-idea-media a:hover { color: var(--white); text-decoration: underline; text-underline-offset: 3px; }
+.trip-idea-card-body { display: flex; flex: 1; flex-direction: column; padding: 26px 30px 30px; }
 .result-rank { position: absolute; right: 25px; top: 24px; color: rgba(23,42,58,.18); font-family: Georgia, serif; font-size: 44px; font-style: italic; }
 .result-title-row { display: flex; justify-content: space-between; gap: 16px; align-items: end; padding-right: 54px; }
 .result-title-row p { margin: 0 0 5px; color: var(--teal); font-size: 10px; font-weight: 850; text-transform: uppercase; letter-spacing: .08em; }

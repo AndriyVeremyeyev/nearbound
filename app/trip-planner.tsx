@@ -1,5 +1,4 @@
 "use client";
-
 import { FormEvent, useEffect, useMemo, useReducer, useState } from "react";
 
 import {
@@ -16,6 +15,7 @@ import {
   writePlannerSearch,
 } from "@/lib/trips/planner-url-state";
 import { composeTripIdeas, fitTripIdeaToAccess, type RouteCatalog } from "@/lib/catalog/compose-trip";
+import { getTripIdeaMedia, type TripIdeaMedia } from "@/lib/catalog/trip-idea-media";
 import type {
   DestinationCatalog,
   ExcludedDestination,
@@ -141,6 +141,7 @@ type PlannerTripIdea = {
   routeId?: string;
   startAreaId?: string;
   endAreaId?: string;
+  media?: TripIdeaMedia;
 };
 
 const defaultOrigin: ResolvedOrigin = {
@@ -322,6 +323,7 @@ export function TripPlanner({
             }
           : undefined,
         destinationId: destination.id,
+        media: getTripIdeaMedia({ destinationId: destination.id }),
       };
     });
     const routeIdeas = catalogRouteIdeas.map(({ catalog, idea, outboundAccess, returnAccess }) => ({
@@ -343,6 +345,7 @@ export function TripPlanner({
           routeId: catalog.id,
           startAreaId: idea.startArea.id,
           endAreaId: idea.endArea.id,
+          media: getTripIdeaMedia({ routeId: catalog.id }),
         }));
 
     if (!hasRunSearch) return [];
@@ -556,15 +559,13 @@ export function TripPlanner({
       <section className="planner-shell" id="planner-workspace" aria-label="Trip planner">
         <form className="planner-card" onSubmit={handleSearch}>
           <div className="section-heading">
-            <span>01</span>
             <div>
               <p>Your trip brief</p>
               <small>Set the constraints that make or break a short trip.</small>
             </div>
           </div>
 
-          <div className="workspace-actions" aria-label="Setup actions">
-            <button type="button" onClick={() => setShowWizard(true)}>Edit setup</button>
+          <div className="workspace-actions">
             <button type="button" onClick={restartPlanner}>Start over</button>
           </div>
 
@@ -836,51 +837,69 @@ export function TripPlanner({
               tabIndex={detailHref ? 0 : undefined}
               aria-label={detailHref ? `Open details for ${idea.title}` : undefined}
             >
-              <div className="result-title-row">
-                <div>
-                  <p>{idea.context}</p>
-                  <h3>{idea.title}</h3>
-                </div>
-              </div>
-              <p className="result-summary">{idea.summary}</p>
-              <div className="tag-row">
-                {idea.facts.map((fact) => <span key={fact}>{fact}</span>)}
-              </div>
-              <div className="micro-plan">
-                <div className="match-explanation">
-                  <span>Why this fits</span>
-                  <p>{idea.matchReasons.join(" ")}</p>
-                </div>
-                <div><span>Possible anchors</span><p>{idea.anchors}</p></div>
-                {idea.source && (
-                  <div className="source-reference">
-                    <span>Research source</span>
+              {idea.media && (
+                <figure className="trip-idea-media">
+                  {/* Catalog photos deliberately stay direct: no image-optimization bill for this low-volume portfolio app. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={idea.media.imageUrl} alt={idea.media.alt} />
+                  <figcaption>
                     <a
-                      href={idea.source.url}
+                      href={idea.media.attribution.url}
                       target="_blank"
                       rel="noreferrer"
                     >
-                      {idea.source.title} ↗
+                      {idea.media.attribution.label} ↗
                     </a>
+                  </figcaption>
+                </figure>
+              )}
+              <div className="trip-idea-card-body">
+                <div className="result-title-row">
+                  <div>
+                    <p>{idea.context}</p>
+                    <h3>{idea.title}</h3>
                   </div>
+                </div>
+                <p className="result-summary">{idea.summary}</p>
+                <div className="tag-row">
+                  {idea.facts.map((fact) => <span key={fact}>{fact}</span>)}
+                </div>
+                <div className="micro-plan">
+                  <div className="match-explanation">
+                    <span>Why this fits</span>
+                    <p>{idea.matchReasons.join(" ")}</p>
+                  </div>
+                  <div><span>Possible anchors</span><p>{idea.anchors}</p></div>
+                  {idea.source && (
+                    <div className="source-reference">
+                      <span>Research source</span>
+                      <a
+                        href={idea.source.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {idea.source.title} ↗
+                      </a>
+                    </div>
+                  )}
+                </div>
+                {currentUser && idea.destinationId && (
+                  <button
+                    className="visited-toggle"
+                    type="button"
+                    aria-pressed={visitedDestinationIds.includes(idea.destinationId)}
+                    disabled={visitedDestinationIds.includes(idea.destinationId)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void markVisitedDestination(idea.destinationId!);
+                    }}
+                  >
+                    {visitedDestinationIds.includes(idea.destinationId)
+                      ? "Visited"
+                      : "Mark as visited"}
+                  </button>
                 )}
               </div>
-              {currentUser && idea.destinationId && (
-                <button
-                  className="visited-toggle"
-                  type="button"
-                  aria-pressed={visitedDestinationIds.includes(idea.destinationId)}
-                  disabled={visitedDestinationIds.includes(idea.destinationId)}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void markVisitedDestination(idea.destinationId!);
-                  }}
-                >
-                  {visitedDestinationIds.includes(idea.destinationId)
-                    ? "Visited"
-                    : "Mark as visited"}
-                </button>
-              )}
             </article>
             );
           })}

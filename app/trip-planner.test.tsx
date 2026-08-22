@@ -342,8 +342,7 @@ describe("Nearbound concept prototype", () => {
       "true",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit setup" }));
-    expect(screen.getByLabelText("Starting point")).toHaveValue("Portland, OR");
+    expect(screen.queryByRole("button", { name: "Edit setup" })).not.toBeInTheDocument();
   });
 
   it("supports back, skip, and a full restart", () => {
