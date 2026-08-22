@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-session";
 import { findTripIdea } from "@/lib/catalog/compose-trip";
 import { loadRouteCatalog } from "@/lib/catalog/repository";
+import { getTripIdeaMedia } from "@/lib/catalog/trip-idea-media";
 import {
   createInitialPlannerState,
 } from "@/lib/trips/planner-state";
@@ -12,6 +13,7 @@ import {
   writePlannerSearch,
 } from "@/lib/trips/planner-url-state";
 import { AccountMenu } from "../../account-menu";
+import { CatalogHeroImage } from "../../catalog-hero-image";
 import { TripIdeaMap } from "../../trip-idea-map";
 
 export const dynamic = "force-dynamic";
@@ -109,6 +111,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const tripDays = groupAreasByDay(tripAreas, sharedPlannerState.days);
   const plannerSearch = writePlannerSearch(sharedPlannerState);
   const backHref = `/${plannerSearch ? `?${plannerSearch}` : ""}#matches`;
+  const heroMedia = getTripIdeaMedia({ routeId: catalog.id });
 
   return (
     <main className="destination-page trip-detail-page">
@@ -132,6 +135,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           <span>{formatPace(sharedPlannerState.pace)}</span>
           <span>{tripAreas.length} areas</span>
         </div>
+        {heroMedia && <CatalogHeroImage media={heroMedia} />}
       </section>
 
       <section className="detail-layout">

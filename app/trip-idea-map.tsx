@@ -13,9 +13,10 @@ type TripMapArea = {
 type TripIdeaMapProps = {
   accessToken?: string;
   areas: readonly TripMapArea[];
+  variant?: "route" | "place";
 };
 
-export function TripIdeaMap({ accessToken, areas }: TripIdeaMapProps) {
+export function TripIdeaMap({ accessToken, areas, variant = "route" }: TripIdeaMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const markersRef = useRef<MapboxMarker[]>([]);
@@ -77,7 +78,7 @@ export function TripIdeaMap({ accessToken, areas }: TripIdeaMapProps) {
       if (map.getSource("trip-idea-route")) {
         map.removeSource("trip-idea-route");
       }
-      if (coordinates.length > 1) {
+      if (variant === "route" && coordinates.length > 1) {
         map.addSource("trip-idea-route", {
           type: "geojson",
           data: {
@@ -101,9 +102,9 @@ export function TripIdeaMap({ accessToken, areas }: TripIdeaMapProps) {
       areas.forEach((area, index) => {
         bounds.extend([area.longitude, area.latitude]);
         const element = document.createElement("div");
-        element.className = `trip-idea-map-marker${index === 0 ? " is-start" : ""}`;
-        element.setAttribute("aria-label", `${index + 1}. ${area.name}`);
-        element.textContent = String(index + 1);
+        element.className = `trip-idea-map-marker${index === 0 ? " is-start" : ""}${variant === "place" ? " is-place" : ""}`;
+        element.setAttribute("aria-label", variant === "place" ? area.name : `${index + 1}. ${area.name}`);
+        element.textContent = variant === "place" ? "•" : String(index + 1);
 
         const marker = new mapboxgl.Marker({ element, anchor: "center" })
           .setLngLat([area.longitude, area.latitude])
@@ -117,7 +118,7 @@ export function TripIdeaMap({ accessToken, areas }: TripIdeaMapProps) {
     return () => {
       disposed = true;
     };
-  }, [accessToken, areas, mapReady]);
+  }, [accessToken, areas, mapReady, variant]);
 
   if (!accessToken) {
     return (
@@ -128,5 +129,5 @@ export function TripIdeaMap({ accessToken, areas }: TripIdeaMapProps) {
     );
   }
 
-  return <div className="trip-idea-map" ref={containerRef} aria-label="Map of this trip idea" />;
+  return <div className="trip-idea-map" ref={containerRef} aria-label={variant === "place" ? "Map of this destination" : "Map of this trip idea"} />;
 }

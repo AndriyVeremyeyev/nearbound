@@ -2,12 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth-session";
+import { getTripIdeaMedia } from "@/lib/catalog/trip-idea-media";
 import { loadDestinationById, loadDestinationVisit } from "@/lib/trips/repository";
 import {
   readPlannerStateFromSearch,
   writePlannerSearch,
 } from "@/lib/trips/planner-url-state";
 import { AccountMenu } from "../../account-menu";
+import { CatalogHeroImage } from "../../catalog-hero-image";
+import { TripIdeaMap } from "../../trip-idea-map";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +53,7 @@ export default async function DestinationPage({ params, searchParams }: Destinat
   const sharedPlannerState = readPlannerStateFromSearch(toSearchString(await searchParams));
   const plannerSearch = sharedPlannerState ? writePlannerSearch(sharedPlannerState) : "";
   const backHref = `/${plannerSearch ? `?${plannerSearch}` : ""}#matches`;
+  const heroMedia = getTripIdeaMedia({ destinationId: destination.id });
 
   return (
     <main className="destination-page">
@@ -73,6 +77,7 @@ export default async function DestinationPage({ params, searchParams }: Destinat
           {destination.usesFerry && <span>Ferry route</span>}
           {destination.crossesBorder && <span>Border crossing</span>}
         </div>
+        {heroMedia && <CatalogHeroImage media={heroMedia} />}
       </section>
 
       <section className="detail-layout">
@@ -97,6 +102,27 @@ export default async function DestinationPage({ params, searchParams }: Destinat
               <Link href={`/account#visited-${destination.id}`}>Edit in account →</Link>
             </section>
           )}
+          <section>
+            <p className="eyebrow">Where it is</p>
+            <h2>See the destination in context.</h2>
+            {typeof destination.latitude === "number" && typeof destination.longitude === "number" ? (
+              <>
+                <TripIdeaMap
+                  accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
+                  areas={[{
+                    id: destination.id,
+                    name: destination.name,
+                    latitude: destination.latitude,
+                    longitude: destination.longitude,
+                  }]}
+                  variant="place"
+                />
+                <p className="trip-map-caption">The marker shows the destination’s planning location; use the official source for final parking and entrance details.</p>
+              </>
+            ) : (
+              <p>Location coordinates have not been added to this catalog record yet.</p>
+            )}
+          </section>
           <section>
             <p className="eyebrow">The anchor</p>
             <h2>One strong plan, not a packed itinerary.</h2>
